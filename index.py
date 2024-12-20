@@ -255,7 +255,7 @@ def get_acao_data_by(ticker):
     should_use_cache = request.args.get('should_use_cache', '1').lower() in TRUE_BOOL_VALUES
 
     print(f'Delete cache? {should_delete_cache}, Clear cache? {should_clear_cache}, Use cache? {should_use_cache}')
-    print(f'Ticker: {ticker}, Source: {source}')
+    print(f'Ticker: {ticker}')
 
     if should_delete_cache:
         delete_cache()
