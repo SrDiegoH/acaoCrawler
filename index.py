@@ -17,18 +17,6 @@ TRUE_BOOL_VALUES = ('true', '1', 't', 'y', 'yes', 's', 'sim')
 CACHE_FILE = '/tmp/cache.txt'
 CACHE_EXPIRY = timedelta(days=1)
 
-FIIS_SOURCE = 'fiis'
-FUNDAMENTUS_SOURCE = 'fundamentus'
-FUNDSEXPLORER_SOURCE = 'fundsexplorer'
-
-def request_fii_by(ticker, source):
-    if source == FUNDAMENTUS_SOURCE:
-        return get_data_from_fundamentus_by(ticker)
-    elif source == FUNDSEXPLORER_SOURCE:
-        return get_data_from_fundsexplorer_by(ticker)
-
-    return get_data_from_all_by(ticker)
-
 def get_data_from_fundamentus_by(ticker):
     try:
         url = f'https://fundamentus.com.br/detalhes.php?papel={ticker}'
@@ -54,113 +42,107 @@ def convert_fundamentus_data(data):
     def generate_link(cnpj):
         return f'https://fnet.bmfbovespa.com.br/fnet/publico/abrirGerenciadorDocumentosCVM?cnpjFundo={cnpj}'
 
-    cash = get_substring(data, 'Caixa\'', '}', False)
-    vacancy = get_substring(data, 'Vacância Média</span>', '</span>')
+    patterns_to_remove = [
+        '</span>',
+        '<span class="txt">',
+        '<span class="oscil">',
+        '</td>',
+        '<td class="data">',
+        '<td class="data w1">',
+        '<td class="data w3">',
+        '<td class="data destaque w3">',
+        '<a href="resultado.php?segmento=',
+        '<font color="#306EFF">',
+        '<font color="#F75D59">'
+    ]
 
     return {
-        'nome': get_substring(data, 'Nome</span>', '</span>'),
-        'gestao': get_substring(data, 'Gestão</span>', '</span>'),
-        'tipo': None,
-        'segmento': get_substring(data, 'Mandato</span>', '</span>'),
-        'atuacao': None,
-        'valor_caixa': get_substring(cash, '[', ']', False) if cash else None,
-        'valor_ativos': text_to_number(get_substring(data, '>Ativos</span>', '</span>')),
-        'valor_mercado': text_to_number(get_substring(data, 'Valor de mercado</span>', '</span>')),
-        'valor_patrimonio_liquido': text_to_number(get_substring(data, 'Patrim Líquido</span>', '</span>')),
-        'valor_cotacao': text_to_number(get_substring(data, 'Cotação</span>', '</span>')),
-        'liquidez': text_to_number(get_substring(data, 'Vol $ méd (2m)</span>', '</span>')),
-        'pvp': text_to_number(get_substring(data, 'P/VP</span>', '</span>')),
-        'ffoy': text_to_number(get_substring(data, 'FFO Yield</span>', '</span>')),
-        'dy': text_to_number(get_substring(data, 'Div. Yield</span>', '</span>')),
-        'dividendos_12_meses': None,
-        'ultimo_dividendo': text_to_number(get_substring(data, 'Dividendo/cota</span>', '</span>')),
-        'valorizacao_12_meses': text_to_number(get_substring(data, '12 meses</span>', '</span>')),
-        'valorizacao_ultimo_mes': text_to_number(get_substring(data, 'Mês</span>', '</span>')),
-        'min_52_semanas': text_to_number(get_substring(data, 'Min 52 sem</span>', '</span>')),
-        'max_52_semanas': text_to_number(get_substring(data, 'Max 52 sem</span>', '</span>')),
-        'qnt_imoveis': text_to_number(get_substring(data, 'Qtd imóveis</span>', '</span>')),
-        'vacancia': text_to_number(vacancy.replace('-', '')) if vacancy else None,
-        'total_cotas_emitidas': text_to_number(get_substring(data, 'Nro. Cotas</span>', '</span>')),
-        'data_inicio': None,
-        'publico_alvo': None,
-        'prazo': None,
-        'link': generate_link(get_substring(data, 'abrirGerenciadorDocumentosCVM?cnpjFundo=', '">Pesquisar Documentos', False)),
-        'vp_cota': text_to_number(get_substring(data, 'VP/Cota</span>', '</span>'))
-    }
-
-def get_data_from_fundsexplorer_by(ticker):
-    try:
-        headers = {
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-            'DNT': '1',
-            'Priority': 'u=0, i',
-            'Upgrade-Insecure-Requests': '1',
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 OPR/112.0.0.0'
-        }
-    
-        response = request_get(f'https://www.fundsexplorer.com.br/funds/{ticker}', headers)
-    
-        data_as_text = get_substring(response, 'var dataLayer_content', 'dataLayer.push')
-    
-        if not data_as_text:
-            return None
-    
-        data_as_json = json.loads(data_as_text.strip(';= '))['pagePostTerms']['meta']
-    
-        return convert_fundsexplorer_data(data_as_json)
-    except:
-        return None
-
-def convert_fundsexplorer_data(data):
-    if not data:
-        return None
-
-    return {
-        'nome': data['name'],
-        'gestao': data['gestao'],
-        'tipo': data['setor_atuacao'],
-        'segmento': data['segmento_ambima'],
-        'atuacao': data['segmento_atuacao'],
-        'valor_caixa': data['valor_caixa'],
-        'valor_mercado': data['valormercado'],
-        'valor_patrimonio_liquido': data['patrimonio'],
-        'valor_cotacao': data['valor'],
-        'liquidez': data['liquidezmediadiaria'],
-        'pvp': data['pvp'],
-        'ffoy': None,
-        'dy': data['dy'],
-        'dividendos_12_meses': data['dividendos_12_meses'],
-        'ultimo_dividendo': data['lastdividend'],
-        'valorizacao_12_meses': data['valorizacao_12_meses'],
-        'valorizacao_ultimo_mes': data['valorizacao_mes'],
-        'min_52_semanas': data['min_52_semanas'],
-        'max_52_semanas': data['max_52_semanas'],
-        'qnt_imoveis': data['assets_number'],
-        'vacancia': data['vacancia'],
-        'total_cotas_emitidas': data['numero_cotas'],
-        'data_inicio': data['firstdate'],
-        'publico_alvo': data['publicoalvo'],
-        'prazo': data['prazoduracao'],
+        'name': get_substring(data, 'Empresa</span>', '</span>', replace_by_paterns=patterns_to_remove),
+        'sector': get_substring(data, 'Subsetor</span>', '</a>', replace_by_paterns=patterns_to_remove).split('>')[1],
         'link': None,
-        'vp_cota': data['valorpatrimonialcota']
+        'price': text_to_number(get_substring(data, 'Cotação</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'liquidity': text_to_number(get_substring(data, 'Vol $ méd (2m)</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'total_stocks': text_to_number(get_substring(data, 'Nro. Ações</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'enterprise_value': text_to_number(get_substring(data, 'Valor da firma</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'equity_value': text_to_number(get_substring(data, 'Patrim. Líq</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'net_revenue': text_to_number(get_substring(data, 'Receita Líquida</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'net_profit': text_to_number(get_substring(data, 'Lucro Líquido</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'net_margin': text_to_number(get_substring(data, 'Marg. Líquida</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'CAGR_revenue': None,
+        'CAGR_profit': None,
+        'debit': text_to_number(get_substring(data, 'Dív. Líquida</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'EBIT': text_to_number(get_substring(data, '>EBIT</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'variation_12M': text_to_number(get_substring(data, '12 meses</span>', '</font>', replace_by_paterns=patterns_to_remove)),
+        'variation_30D': text_to_number(get_substring(data, '30 dias</span>', '</font>', replace_by_paterns=patterns_to_remove)),
+        'min_52_weeks': text_to_number(get_substring(data, 'Min 52 sem</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'max_52_weeks': text_to_number(get_substring(data, 'Max 52 sem</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'PVP': text_to_number(get_substring(data, 'P/VP</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'DY': text_to_number(get_substring(data, 'Div. Yield</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'latests_dividends': None,
+        'AVG_annual_dividends': None,
+        'PL': text_to_number(get_substring(data, 'P/L</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'ROE': text_to_number(get_substring(data, 'ROE</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'EYA': calculate_eya(),
+        'ceiling_price': calculate_ceiling_price()
     }
 
-def get_data_from_all_by(ticker):
+def get_data_from_investidor10_by(ticker):
+    headers = {
+        'accept': '*/*',
+        'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        'referer': 'https://investidor10.com.br/acoes/cmig4/',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/114.0.0.0',
+    }
+
+    url = f'https://investidor10.com.br/acoes/{ticker}'
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+
+    html = response.text[15898:]
+
+    url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
+
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+
+    return [ html, response.json() ]
+
+def calculate_AVG_dividends_annual(dividends):
+    return sum(dividend['price'] for dividend in dividends) / len(dys)
+
+def get_leatests_dividends(dividends):
+    current_year = datetime.now().year
+    return sum(dividend['price'] for dividend in dividends if dividend['created_at'] == current_year)
+
+def convert_investidor10_ticker_data(data):
+    patterns_to_remove = [
+        '<span>',
+        '<div class="value d-flex justify-content-between align-items-center"',
+        'style="margin-top: 10px; width: 100%; padding-right: 0px">'
+    ]
+
+    return {
+        'CAGR_revenue': text_to_number(get_substring(data[0], 'período de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'CAGR_profit': text_to_number(get_substring(data[0], 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'latests_dividends': get_leatests_dividends(data[1]),
+        'AVG_annual_dividends': calculate_AVG_dividends_annual(data[1])
+    }
+
+def get_data_by(ticker):
     data_fundamentus = get_data_from_fundamentus_by(ticker)
-    data_fundsexplorer = get_data_from_fundsexplorer_by(ticker)
+    data_investidor10 = get_data_from_investidor10_by(ticker)
 
     if not data_fundamentus:
-        return data_fundsexplorer
+        return None
 
-    if not data_fundsexplorer:
+    if not data_investidor10:
         return data_fundamentus
 
     data_merge = {}
 
     for key, value in data_fundamentus.items():
-        if key in data_fundsexplorer and not value:
-            data_merge[key] = data_fundsexplorer[key]
+        if key in data_investidor10 and not value:
+            data_merge[key] = data_investidor10[key]
             continue
 
         data_merge[key] = value
@@ -175,7 +157,7 @@ def request_get(url, headers=None):
 
     return response.text
 
-def get_substring(text, start_text, end_text, should_remove_tags=True, replace_by_paterns=[]):
+def get_substring(text, start_text, end_text, should_remove_tags=False, replace_by_paterns=[]):
     start_index = text.find(start_text)
     new_text = text[start_index:]
 
@@ -199,6 +181,8 @@ def text_to_number(text, should_convert_thousand_decimal_separators=True, conver
     if not text:
         return 0
 
+
+    print(f'Data before transformation: {text}')
     try:
         if not isinstance(text, str):
             return text
@@ -266,13 +250,11 @@ def delete_cache():
         os.remove(CACHE_FILE)
         #print('Deleted')
 
-@app.route('/fii/<ticker>', methods=['GET'])
-def get_fii_data_by(ticker):
+@app.route('/acao/<ticker>', methods=['GET'])
+def get_acao_data_by(ticker):
     should_delete_cache = request.args.get('should_delete_cache', '0').lower() in TRUE_BOOL_VALUES
     should_clear_cache = request.args.get('should_clear_cache', '0').lower() in TRUE_BOOL_VALUES
     should_use_cache = request.args.get('should_use_cache', '1').lower() in TRUE_BOOL_VALUES
-
-    source = request.args.get('source', 'all').lower()
 
     #print(f'Delete cache? {should_delete_cache}, Clear cache? {should_clear_cache}, Use cache? {should_use_cache}')
     #print(f'Ticker: {ticker}, Source: {source}')
@@ -287,7 +269,7 @@ def get_fii_data_by(ticker):
             #print(f'Data from Cache: {cached_data}')
             return jsonify({'data': cached_data, 'source': 'cache', 'date': cache_date.strftime("%d/%m/%Y, %H:%M")}), 200
 
-    data = request_fii_by(ticker, source)
+    data = get_data_by(ticker)
     #print(f'Data from Source: {data}')
 
     if should_use_cache and not should_delete_cache and not should_clear_cache:
