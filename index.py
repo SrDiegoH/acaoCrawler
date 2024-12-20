@@ -37,8 +37,9 @@ def get_data_from_fundamentus_by(ticker):
 
 def convert_fundamentus_data(data):
     if not data:
+        print(f'Data is none: {data}')
         return None
-
+    print(f'Data is not none: {data}')
     patterns_to_remove = [
         '</span>',
         '<span class="txt">',
