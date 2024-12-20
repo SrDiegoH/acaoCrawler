@@ -39,9 +39,6 @@ def convert_fundamentus_data(data):
     if not data:
         return None
 
-    def generate_link(cnpj):
-        return f'https://fnet.bmfbovespa.com.br/fnet/publico/abrirGerenciadorDocumentosCVM?cnpjFundo={cnpj}'
-
     patterns_to_remove = [
         '</span>',
         '<span class="txt">',
@@ -49,6 +46,7 @@ def convert_fundamentus_data(data):
         '</td>',
         '<td class="data">',
         '<td class="data w1">',
+        '<td class="data w2">',
         '<td class="data w3">',
         '<td class="data destaque w3">',
         '<a href="resultado.php?segmento=',
@@ -153,7 +151,7 @@ def request_get(url, headers=None):
     response = requests.get(url, headers=headers)
     response.raise_for_status()
 
-    #print(f'Response: {response}')
+    print(f'Response: {response}')
 
     return response.text
 
@@ -207,7 +205,7 @@ def read_cache(ticker, should_clear_cache):
 
     control_clean_cache = False
 
-    #print(f'Reading cache')
+    print(f'Reading cache')
     with open(CACHE_FILE, 'r') as cache_file:
         for line in cache_file:
             if not line.startswith(ticker):
@@ -218,7 +216,7 @@ def read_cache(ticker, should_clear_cache):
             cached_date = datetime.strptime(cached_datetime, '%Y-%m-%d %H:%M:%S')
 
             if datetime.now() - cached_date <= CACHE_EXPIRY:
-                #print(f'Finished read')
+                print(f'Finished read')
                 return json.loads(data.replace("'", '"')), cached_date
 
             control_clean_cache = True
@@ -230,7 +228,7 @@ def read_cache(ticker, should_clear_cache):
     return None, None
 
 def clear_cache(ticker):
-    #print(f'Cleaning cache')
+    print(f'Cleaning cache')
     with open(CACHE_FILE, 'r') as cache_file:
         lines = cache_file.readlines()
 
@@ -238,7 +236,7 @@ def clear_cache(ticker):
         for line in lines:
             if not line.startswith(ticker):
                 cache_file.write(line)
-   #print(f'Cleaned')
+    print(f'Cleaned')
 
 def write_to_cache(ticker, data):
     with open(CACHE_FILE, 'a') as cache_file:
@@ -246,9 +244,9 @@ def write_to_cache(ticker, data):
 
 def delete_cache():
     if os.path.exists(CACHE_FILE):
-        #print('Deleting cache')
+        print('Deleting cache')
         os.remove(CACHE_FILE)
-        #print('Deleted')
+        print('Deleted')
 
 @app.route('/acao/<ticker>', methods=['GET'])
 def get_acao_data_by(ticker):
@@ -256,8 +254,8 @@ def get_acao_data_by(ticker):
     should_clear_cache = request.args.get('should_clear_cache', '0').lower() in TRUE_BOOL_VALUES
     should_use_cache = request.args.get('should_use_cache', '1').lower() in TRUE_BOOL_VALUES
 
-    #print(f'Delete cache? {should_delete_cache}, Clear cache? {should_clear_cache}, Use cache? {should_use_cache}')
-    #print(f'Ticker: {ticker}, Source: {source}')
+    print(f'Delete cache? {should_delete_cache}, Clear cache? {should_clear_cache}, Use cache? {should_use_cache}')
+    print(f'Ticker: {ticker}, Source: {source}')
 
     if should_delete_cache:
         delete_cache()
@@ -266,11 +264,11 @@ def get_acao_data_by(ticker):
         cached_data , cache_date = read_cache(ticker, should_clear_cache)
 
         if cached_data:
-            #print(f'Data from Cache: {cached_data}')
+            print(f'Data from Cache: {cached_data}')
             return jsonify({'data': cached_data, 'source': 'cache', 'date': cache_date.strftime("%d/%m/%Y, %H:%M")}), 200
 
     data = get_data_by(ticker)
-    #print(f'Data from Source: {data}')
+    print(f'Data from Source: {data}')
 
     if should_use_cache and not should_delete_cache and not should_clear_cache:
         write_to_cache(ticker, data)
