@@ -30,7 +30,7 @@ def get_data_from_fundamentus_by(ticker):
         }
     
         response = request_get(url, headers)
-    
+        print(f'Fundamentus data: {response}')
         return convert_fundamentus_data(response)
     except:
         return None
@@ -128,6 +128,8 @@ def convert_investidor10_ticker_data(data):
 
 def get_data_by(ticker):
     data_fundamentus = get_data_from_fundamentus_by(ticker)
+    
+    print(f'Converted Fundamentus data: {response}')
     data_investidor10 = get_data_from_investidor10_by(ticker)
 
     if not data_fundamentus:
