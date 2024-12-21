@@ -66,6 +66,7 @@ def convert_fundamentus_data(data):
         'net_revenue': text_to_number(get_substring(data, 'Receita Líquida</span>', '</span>', replace_by_paterns=patterns_to_remove)),
         'net_profit': text_to_number(get_substring(data, 'Lucro Líquido</span>', '</span>', replace_by_paterns=patterns_to_remove)),
         'net_margin': text_to_number(get_substring(data, 'Marg. Líquida</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'gross_margin': text_to_number(get_substring(data, 'Marg. Bruta</span>', '</span>', replace_by_paterns=patterns_to_remove)),
         'CAGR_revenue': None,
         'CAGR_profit': None,
         'debit': text_to_number(get_substring(data, 'Dív. Líquida</span>', '</span>', replace_by_paterns=patterns_to_remove)),
