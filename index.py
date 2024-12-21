@@ -31,14 +31,11 @@ def get_data_from_fundamentus_by(ticker):
     
         response = request_get(url, headers)
 
-        # print(f'Fundamentus data: {response}')
+        print(f'Fundamentus data: {response.text}')
 
         return convert_fundamentus_data(response.text)
     except:
         return None
-
-def calculate_eya(ev, ebit):
-    return ebit / ev
 
 def convert_fundamentus_data(data):
     if not data:
@@ -118,7 +115,7 @@ def convert_investidor10_ticker_data(data):
         '<div class="value d-flex justify-content-between align-items-center"',
         'style="margin-top: 10px; width: 100%; padding-right: 0px">'
     ]
-    print(f"Investidor 10 dividends: {data[1]}")
+    print(f"Investidor 10 dividends: {data}")
     return {
         'CAGR_revenue': text_to_number(get_substring(data[0], 'período de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove)),
         'CAGR_profit': text_to_number(get_substring(data[0], 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove)),
