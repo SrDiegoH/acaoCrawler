@@ -31,8 +31,6 @@ def get_data_from_fundamentus_by(ticker):
     
         response = request_get(url, headers)
 
-        print(f'Fundamentus data: {response.text}')
-
         return convert_fundamentus_data(response.text)
     except:
         return None
@@ -100,7 +98,7 @@ def get_data_from_investidor10_by(ticker):
     url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
     response = request_get(url, headers)
 
-    return [ html, response.json() ]
+    return convert_investidor10_ticker_data(html, response.json())
 
 def calculate_AVG_dividends_annual(dividends):
     return sum(dividend['price'] for dividend in dividends) / len(dys)
@@ -109,30 +107,33 @@ def get_leatests_dividends(dividends):
     current_year = datetime.now().year
     return sum(dividend['price'] for dividend in dividends if dividend['created_at'] == current_year)
 
-def convert_investidor10_ticker_data(data):
+def convert_investidor10_ticker_data(html_page, json_data):
     patterns_to_remove = [
         '<span>',
         '<div class="value d-flex justify-content-between align-items-center"',
         'style="margin-top: 10px; width: 100%; padding-right: 0px">'
     ]
-    print(f"Investidor 10 dividends: {data}")
+
     return {
-        'CAGR_revenue': text_to_number(get_substring(data[0], 'período de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove)),
-        'CAGR_profit': text_to_number(get_substring(data[0], 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove)),
-        'latests_dividends': get_leatests_dividends(data[1]),
-        'AVG_annual_dividends': calculate_AVG_dividends_annual(data[1])
+        'CAGR_revenue': text_to_number(get_substring(html_page, 'período de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'CAGR_profit': text_to_number(get_substring(html_page, 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'latests_dividends': get_leatests_dividends(json_data),
+        'AVG_annual_dividends': calculate_AVG_dividends_annual(json_data)
     }
 
 def get_data_by(ticker):
     data_fundamentus = get_data_from_fundamentus_by(ticker)
     data_investidor10 = get_data_from_investidor10_by(ticker)
 
+    print(f"Converted Fundamentus Data: {data_fundamentus}")
+    print(f"Converted investidor 10 Data: {data_investidor10}")
+
     if not data_fundamentus:
         return None
 
     if not data_investidor10:
         return data_fundamentus
-    print(f"Converted investidor 10 data: {data_investidor10}")
+
     data_merge = {}
 
     for key, value in data_fundamentus.items():
@@ -148,7 +149,7 @@ def request_get(url, headers=None):
     response = requests.get(url, headers=headers)
     response.raise_for_status()
 
-    # print(f'Response: {response}')
+    print(f'Response from {url} : {response}')
 
     return response
 
