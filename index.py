@@ -30,8 +30,10 @@ def get_data_from_fundamentus_by(ticker):
         }
     
         response = request_get(url, headers)
-        print(f'Fundamentus data: {response}')
-        return convert_fundamentus_data(response)
+
+        # print(f'Fundamentus data: {response}')
+
+        return convert_fundamentus_data(response.text)
     except:
         return None
 
@@ -40,9 +42,8 @@ def calculate_eya(ev, ebit):
 
 def convert_fundamentus_data(data):
     if not data:
-        print('Data is none')
         return None
-    print('Data is not none')
+
     patterns_to_remove = [
         '</span>',
         '<span class="txt">',
@@ -95,15 +96,12 @@ def get_data_from_investidor10_by(ticker):
     }
 
     url = f'https://investidor10.com.br/acoes/{ticker}'
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
+    response = request_get(url, headers)
 
     html = response.text[15898:]
 
     url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
-
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
+    response = request_get(url, headers)
 
     return [ html, response.json() ]
 
@@ -120,7 +118,7 @@ def convert_investidor10_ticker_data(data):
         '<div class="value d-flex justify-content-between align-items-center"',
         'style="margin-top: 10px; width: 100%; padding-right: 0px">'
     ]
-
+    print(f"Investidor 10 dividends: {data[1]}")
     return {
         'CAGR_revenue': text_to_number(get_substring(data[0], 'período de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove)),
         'CAGR_profit': text_to_number(get_substring(data[0], 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove)),
@@ -137,7 +135,7 @@ def get_data_by(ticker):
 
     if not data_investidor10:
         return data_fundamentus
-
+    print(f"Converted investidor 10 data: {data_investidor10}")
     data_merge = {}
 
     for key, value in data_fundamentus.items():
@@ -153,9 +151,9 @@ def request_get(url, headers=None):
     response = requests.get(url, headers=headers)
     response.raise_for_status()
 
-    print(f'Response: {response}')
+    # print(f'Response: {response}')
 
-    return response.text
+    return response
 
 def get_substring(text, start_text, end_text, should_remove_tags=False, replace_by_paterns=[]):
     start_index = text.find(start_text)
@@ -181,8 +179,6 @@ def text_to_number(text, should_convert_thousand_decimal_separators=True, conver
     if not text:
         return 0
 
-
-    print(f'Data before transformation: {text}')
     try:
         if not isinstance(text, str):
             return text
@@ -207,7 +203,7 @@ def read_cache(ticker, should_clear_cache):
 
     control_clean_cache = False
 
-    print(f'Reading cache')
+    # print(f'Reading cache')
     with open(CACHE_FILE, 'r') as cache_file:
         for line in cache_file:
             if not line.startswith(ticker):
@@ -218,7 +214,7 @@ def read_cache(ticker, should_clear_cache):
             cached_date = datetime.strptime(cached_datetime, '%Y-%m-%d %H:%M:%S')
 
             if datetime.now() - cached_date <= CACHE_EXPIRY:
-                print(f'Finished read')
+                # print(f'Finished read')
                 return json.loads(data.replace("'", '"')), cached_date
 
             control_clean_cache = True
@@ -230,7 +226,7 @@ def read_cache(ticker, should_clear_cache):
     return None, None
 
 def clear_cache(ticker):
-    print(f'Cleaning cache')
+    # print(f'Cleaning cache')
     with open(CACHE_FILE, 'r') as cache_file:
         lines = cache_file.readlines()
 
@@ -238,7 +234,7 @@ def clear_cache(ticker):
         for line in lines:
             if not line.startswith(ticker):
                 cache_file.write(line)
-    print(f'Cleaned')
+    # print(f'Cleaned')
 
 def write_to_cache(ticker, data):
     with open(CACHE_FILE, 'a') as cache_file:
@@ -246,9 +242,9 @@ def write_to_cache(ticker, data):
 
 def delete_cache():
     if os.path.exists(CACHE_FILE):
-        print('Deleting cache')
+        # print('Deleting cache')
         os.remove(CACHE_FILE)
-        print('Deleted')
+        # print('Deleted')
 
 @app.route('/acao/<ticker>', methods=['GET'])
 def get_acao_data_by(ticker):
@@ -256,8 +252,8 @@ def get_acao_data_by(ticker):
     should_clear_cache = request.args.get('should_clear_cache', '0').lower() in TRUE_BOOL_VALUES
     should_use_cache = request.args.get('should_use_cache', '1').lower() in TRUE_BOOL_VALUES
 
-    print(f'Delete cache? {should_delete_cache}, Clear cache? {should_clear_cache}, Use cache? {should_use_cache}')
-    print(f'Ticker: {ticker}')
+    # print(f'Delete cache? {should_delete_cache}, Clear cache? {should_clear_cache}, Use cache? {should_use_cache}')
+    # print(f'Ticker: {ticker}')
 
     if should_delete_cache:
         delete_cache()
@@ -266,11 +262,11 @@ def get_acao_data_by(ticker):
         cached_data , cache_date = read_cache(ticker, should_clear_cache)
 
         if cached_data:
-            print(f'Data from Cache: {cached_data}')
+            # print(f'Data from Cache: {cached_data}')
             return jsonify({'data': cached_data, 'source': 'cache', 'date': cache_date.strftime("%d/%m/%Y, %H:%M")}), 200
 
     data = get_data_by(ticker)
-    print(f'Data from Source: {data}')
+    # print(f'Data from Source: {data}')
 
     if should_use_cache and not should_delete_cache and not should_clear_cache:
         write_to_cache(ticker, data)
