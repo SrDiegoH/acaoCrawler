@@ -101,7 +101,7 @@ def get_data_from_investidor10_by(ticker):
     return convert_investidor10_ticker_data(html, response.json())
 
 def calculate_AVG_dividends_annual(dividends):
-    return sum(dividend['price'] for dividend in dividends) / len(dys)
+    return sum(dividend['price'] for dividend in dividends) / len(dividends)
 
 def get_leatests_dividends(dividends):
     current_year = datetime.now().year
