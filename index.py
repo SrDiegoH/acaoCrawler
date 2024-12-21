@@ -125,8 +125,8 @@ def get_data_by(ticker):
     data_fundamentus = get_data_from_fundamentus_by(ticker)
     data_investidor10 = get_data_from_investidor10_by(ticker)
 
-    print(f"Converted Fundamentus Data: {data_fundamentus}")
-    print(f"Converted investidor 10 Data: {data_investidor10}")
+    # print(f"Converted Fundamentus Data: {data_fundamentus}")
+    # print(f"Converted investidor 10 Data: {data_investidor10}")
 
     if not data_fundamentus:
         return None
@@ -149,7 +149,7 @@ def request_get(url, headers=None):
     response = requests.get(url, headers=headers)
     response.raise_for_status()
 
-    print(f'Response from {url} : {response}')
+    # print(f'Response from {url} : {response}')
 
     return response
 
