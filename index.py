@@ -55,7 +55,7 @@ def convert_fundamentus_data(data):
     ]
 
     return {
-        'name': get_substring(data, 'Empresa</span>', '</span>', replace_by_paterns=patterns_to_remove),
+        'name': get_substring(data, 'Empresa</span>', '</span>', replace_by_paterns=patterns_to_remove + [ get_substring(data, 'Tipo</span>', '</span>', replace_by_paterns=patterns_to_remove) ]),
         'sector': get_substring(data, 'Subsetor</span>', '</a>', replace_by_paterns=patterns_to_remove).split('>')[1],
         'link': None,
         'price': text_to_number(get_substring(data, 'Cotação</span>', '</span>', replace_by_paterns=patterns_to_remove)),
