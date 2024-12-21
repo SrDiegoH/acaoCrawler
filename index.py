@@ -35,11 +35,14 @@ def get_data_from_fundamentus_by(ticker):
     except:
         return None
 
+def calculate_eya(ev, ebit):
+    return ebit / ev
+
 def convert_fundamentus_data(data):
     if not data:
-        print(f'Data is none: {data}')
+        print('Data is none')
         return None
-    print(f'Data is not none: {data}')
+    print('Data is not none')
     patterns_to_remove = [
         '</span>',
         '<span class="txt">',
@@ -80,9 +83,7 @@ def convert_fundamentus_data(data):
         'latests_dividends': None,
         'AVG_annual_dividends': None,
         'PL': text_to_number(get_substring(data, 'P/L</span>', '</span>', replace_by_paterns=patterns_to_remove)),
-        'ROE': text_to_number(get_substring(data, 'ROE</span>', '</span>', replace_by_paterns=patterns_to_remove)),
-        'EYA': calculate_eya(),
-        'ceiling_price': calculate_ceiling_price()
+        'ROE': text_to_number(get_substring(data, 'ROE</span>', '</span>', replace_by_paterns=patterns_to_remove))
     }
 
 def get_data_from_investidor10_by(ticker):
@@ -129,8 +130,6 @@ def convert_investidor10_ticker_data(data):
 
 def get_data_by(ticker):
     data_fundamentus = get_data_from_fundamentus_by(ticker)
-    
-    print(f'Converted Fundamentus data: {data_fundamentus}')
     data_investidor10 = get_data_from_investidor10_by(ticker)
 
     if not data_fundamentus:
