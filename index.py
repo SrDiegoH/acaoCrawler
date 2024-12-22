@@ -30,7 +30,7 @@ def request_get(url, headers=None):
     return response
 
 def get_substring(text, start_text, end_text, replace_by_paterns=[], should_remove_tags=False):
-    if not text
+    if not text:
         return None
 
     start_index = text.find(start_text)
