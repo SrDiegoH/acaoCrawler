@@ -211,7 +211,7 @@ def get_leatests_dividends(dividends):
     current_year = datetime.now().year
     return next((dividend['price'] for dividend in dividends if dividend['created_at'] == current_year), None)
 
-def convert_investidor10_ticker_data(html_page, json_data):
+def convert_investidor10_ticker_data(html_page, json_all_data, json_dividends_data):
     patterns_to_remove = [
         '<span>',
         '<span class="value">',
@@ -246,8 +246,8 @@ def convert_investidor10_ticker_data(html_page, json_data):
         'max_52_weeks': None,
         'PVP': text_to_number(get_substring(html_page, 'P/VP</span>', '</span>', patterns_to_remove)),
         'DY': text_to_number(get_substring(html_page, 'DY</span>', '</span>', patterns_to_remove)),
-        'latests_dividends': get_leatests_dividends(json_data),
-        'AVG_annual_dividends': calculate_AVG_dividends_annual(json_data),
+        'latests_dividends': get_leatests_dividends(json_dividends_data),
+        'AVG_annual_dividends': calculate_AVG_dividends_annual(json_dividends_data),
         'assets_value': get_detailed_value(get_substring(html_page, 'Ativos</span>', '</span>', patterns_to_remove)),
         'market_value': get_detailed_value(get_substring(html_page, 'Valor de mercado</span>', '</span>', patterns_to_remove)),
         'PL': text_to_number(get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)),
@@ -278,7 +278,6 @@ def get_data_from_investidor10_by(ticker):
         response = request_get(url, headers)
         json_dividends_data = response.json()
 
-        print(f"All data: {json_all_data}")
         print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(half_html_page, json_all_data, json_dividends_data)}")
         return convert_investidor10_ticker_data(half_html_page, json_data)
     except Exception as error:
