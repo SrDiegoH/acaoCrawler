@@ -30,9 +30,6 @@ def request_get(url, headers=None):
     return response
 
 def get_substring(text, start_text, end_text, replace_by_paterns=[], should_remove_tags=False):
-    if not text:
-        return None
-
     start_index = text.find(start_text)
     new_text = text[start_index:]
 
@@ -68,11 +65,11 @@ def text_to_number(text, should_convert_thousand_decimal_separators=True, conver
         if should_convert_thousand_decimal_separators:
             text = text.replace('.','').replace(',','.')
 
-        if 'R$' in text:
-            text = text.replace('R$', '')
-
         if '%' in text:
             return float(text.replace('%', '').strip()) / (100 if convert_percent_to_decimal else 1)
+
+        if 'R$' in text:
+            text = text.replace('R$', '')
 
         return float(text.strip())
     except:
@@ -210,7 +207,7 @@ def convert_investidor10_ticker_data(html_page, json_dividends_data):
         return next((dividend['price'] for dividend in dividends if dividend['created_at'] == current_year), None)
 
     calculate_AVG_dividends_annual = lambda dividends: sum(dividend['price'] for dividend in dividends) / len(dividends)
-    get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>')) if text else -1
+    get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>'))
 
     patterns_to_remove = [
         '<span>',
@@ -219,7 +216,6 @@ def convert_investidor10_ticker_data(html_page, json_dividends_data):
         '<div>',
         '<div class="_card-body">',
         '<div class="value d-flex justify-content-between align-items-center"',
-        '<div class="value d-flex justify-content-between align-items-center" style="margin-top: 10px; width: 100%; padding-right: 0px">',
         'style="margin-top: 10px; width: 100%; padding-right: 0px">',
         '<td class="column-value">'
     ]
