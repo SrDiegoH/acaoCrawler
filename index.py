@@ -267,6 +267,7 @@ def get_data_from_investidor10_by(ticker):
     
         half_html_page = response.text[15898:]
     
+        print(f"Investidor 10 html page: {half_html_page}")
         url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
         response = request_get(url, headers)
         json_data = response.json()
