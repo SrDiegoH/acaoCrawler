@@ -234,12 +234,12 @@ def convert_investidor10_ticker_data(html_page, json_dividends_data):
         'equity_value': get_detailed_value(get_substring(html_page, 'Patrimônio Líquido</span>', '</span>')),
         'net_revenue': None,
         'net_profit': None,
-        'net_margin': None,
-        'gross_margin': None,
+        'net_margin': text_to_number(get_substring(html_page, 'lucro líquido / receita líquida&lt;/b&gt;&lt;br&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
+        'gross_margin': text_to_number(get_substring(html_page, 'lucro bruto / receita líquida&lt;/b&gt;&lt;br&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
         'CAGR_revenue': text_to_number(get_substring(html_page, 'período de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
         'CAGR_profit': text_to_number(get_substring(html_page, 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
         'debit': get_detailed_value(get_substring(html_page, 'Dívida Líquida</span>', '</span>')),
-        'EBIT': Noone,
+        'EBIT':  None,
         'variation_12M': text_to_number(get_substring(html_page, 'VARIAÇÃO (12M)</span>', '</span>', patterns_to_remove)),
         'variation_30D': None,
         'min_52_weeks': None,
@@ -251,7 +251,7 @@ def convert_investidor10_ticker_data(html_page, json_dividends_data):
         'assets_value': get_detailed_value(get_substring(html_page, 'Ativos</span>', '</span>')),
         'market_value': get_detailed_value(get_substring(html_page, 'Valor de mercado</span>', '</span>')),
         'PL': text_to_number(get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)),
-        'ROE': None,
+        'ROE': text_to_number(get_substring(html_page, 'lucro líquido / patrimônio líquido&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
     }
 
 def get_data_from_investidor10_by(ticker):
