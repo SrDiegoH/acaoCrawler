@@ -30,6 +30,9 @@ def request_get(url, headers=None):
     return response
 
 def get_substring(text, start_text, end_text, replace_by_paterns=[], should_remove_tags=False):
+    if not text
+        return None
+
     start_index = text.find(start_text)
     new_text = text[start_index:]
 
@@ -221,6 +224,7 @@ def convert_investidor10_ticker_data(html_page, json_data):
     
     #sector_subsector = get_substring(html_page, '.br/setores/', '"', patterns_to_remove)
     #subsector = sector_subsector.split('/').replace('-', ' ')
+    print("->", 'Receita Líquida' is in html_page, " - ", 'Receita Líquida - (R$)' is in html_page, " - ", 'Receita Líquida - (R$)</td>' is in html_page, " - ", )
     print("--->", get_substring(html_page, 'Receita Líquida - (R$)</td>', '</tr>', patterns_to_remove))
     print("----->", get_substring(html_page, 'Receita Líquida - (R$)</td>', '</tr>'))
     return {
