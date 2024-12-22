@@ -279,7 +279,7 @@ def get_data_from_investidor10_by(ticker):
         json_dividends_data = response.json()
 
         print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(half_html_page, json_dividends_data)}")
-        return convert_investidor10_ticker_data(half_html_page, json_data)
+        return convert_investidor10_ticker_data(half_html_page, json_dividends_data)
     except Exception as error:
         print(f"Error on get Investidor 10 data: {traceback.format_exc()}")
         return None
