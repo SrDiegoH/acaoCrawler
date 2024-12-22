@@ -204,14 +204,38 @@ def get_data_from_fundamentus_by(ticker):
         #print(f"Error on get Fundamentus data: {repr(error)}")
         return None
 
-def calculate_AVG_dividends_annual(dividends):
-    return sum(dividend['price'] for dividend in dividends) / len(dividends)
+def get_fundamental_indicators_from(json_indicators):
+    def get_indicator_data(json_indicator):
+        for data in json_indicator:
+            if data['year'] == 'Atual':
+                return data['value']
 
-def get_leatests_dividends(dividends):
-    current_year = datetime.now().year
-    return next((dividend['price'] for dividend in dividends if dividend['created_at'] == current_year), None)
+        return None
+
+
+    return {
+        'liquidity': None,
+        'total_issued_shares': None,
+        'enterprise_value': None,
+        'equity_value': None,
+        'net_revenue': get_indicator_data(json_indicators[]),
+        'net_profit': get_detailed_value(get_substring(html_page, 'Lucro Líquido - (R$)</td>', '</tr>', patterns_to_remove)),
+        'net_margin': get_indicator_data(json_indicators["MARGEM L\u00cdQUIDA"]),
+        'gross_margin': get_indicator_data(json_indicators["MARGEM BRUTA"]),
+        'debit': get_detailed_value(get_substring(html_page, 'Dívida Líquida</span>', '</span>', patterns_to_remove)),
+        'EBIT': get_detailed_value(get_substring(html_page, 'EBIT - (R$)</td>', '</tr>', patterns_to_remove)),
+        'assets_value': get_detailed_value(get_substring(html_page, 'Ativos</span>', '</span>', patterns_to_remove)),
+        'market_value': get_detailed_value(get_substring(html_page, 'Valor de mercado</span>', '</span>', patterns_to_remove))
+    }
 
 def convert_investidor10_ticker_data(html_page, json_all_data, json_dividends_data):
+    def get_leatests_dividends(dividends):
+        current_year = datetime.now().year
+        return next((dividend['price'] for dividend in dividends if dividend['created_at'] == current_year), None)
+
+    calculate_AVG_dividends_annual = lambda dividends: sum(dividend['price'] for dividend in dividends) / len(dividends)
+    get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>')) if text else -1
+
     patterns_to_remove = [
         '<span>',
         '<span class="value">',
@@ -228,7 +252,7 @@ def convert_investidor10_ticker_data(html_page, json_all_data, json_dividends_da
         'sector':  get_substring(html_page, 'Segmento</span>', '</span>', patterns_to_remove),
         'link': None,
         'price': text_to_number(get_substring(html_page, 'Cotação</span>', '</span>', patterns_to_remove)),
-        'liquidity': get_detailed_value(get_substring(html_page, 'Liquidez Média Diária</span>', '</span>', patterns_to_remove)),
+        'liquidity': get_detailed_value(get_substring(html_page, 'Liquidez Média Diária</span>', '</span>')),
         'total_issued_shares': get_detailed_value(get_substring(html_page, 'Nº total de papeis</span>', '</span>', patterns_to_remove)),
         'enterprise_value': get_detailed_value(get_substring(html_page, 'Valor de firma</span>', '</span>', patterns_to_remove)),
         'equity_value': get_detailed_value(get_substring(html_page, 'Patrimônio Líquido</span>', '</span>', patterns_to_remove)),
