@@ -204,7 +204,7 @@ def get_data_from_fundamentus_by(ticker):
         #print(f"Error on get Fundamentus data: {repr(error)}")
         return None
 
-def convert_investidor10_ticker_data(html_page, json_all_data, json_dividends_data):
+def convert_investidor10_ticker_data(html_page, json_dividends_data):
     def get_leatests_dividends(dividends):
         current_year = datetime.now().year
         return next((dividend['price'] for dividend in dividends if dividend['created_at'] == current_year), None)
@@ -268,11 +268,11 @@ def get_data_from_investidor10_by(ticker):
     
         half_html_page = response.text[15898:]
 
-        id = get_substring(half_html_page, "tickerId = '", "'")
+        #id = get_substring(half_html_page, "tickerId = '", "'")
 
-        url = f'https://investidor10.com.br/api/historico-indicadores/{id}/5/?v=2'
-        response = request_get(url, headers)
-        json_all_data = response.json()
+        #url = f'https://investidor10.com.br/api/historico-indicadores/{id}/5/?v=2'
+        #response = request_get(url, headers)
+        #json_all_data = response.json()
         
         url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
         response = request_get(url, headers)
