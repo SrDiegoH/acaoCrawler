@@ -235,39 +235,32 @@ def convert_investidor10_ticker_data(html_page, json_data):
         '<div>',
         '<div class="_card-body">',
         '<div class="value d-flex justify-content-between align-items-center"',
-        'style="margin-top: 10px; width: 100%; padding-right: 0px">'
+        'style="margin-top: 10px; width: 100%; padding-right: 0px">',
+        '<td class="column-value">'
     ]
 
-    get_detailed_value = lambda text: get_substring(text, 'detail-value">', '</div>')
+    get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>'))
     
     #sector_subsector = get_substring(html_page, '.br/setores/', '"', patterns_to_remove)
     #subsector = sector_subsector.split('/').replace('-', ' ')
-
-    full_liquidity_text = get_substring(html_page, 'Liquidez Média Diária</span>', '</span>', patterns_to_remove)
-    full_total_issued_shares_text = get_substring(html_page, 'Nº total de papeis</span>', '</span>', patterns_to_remove)
-    full_enterprise_value_text = get_substring(html_page, 'Valor de firma</span>', '</span>', patterns_to_remove)
-    full_equity_value_text = get_substring(html_page, 'Patrimônio Líquido</span>', '</span>', patterns_to_remove)
-    full_market_value_text = get_substring(html_page, 'Valor de mercado</span>', '</span>', patterns_to_remove)
-    full_assets_value_text = get_substring(html_page, 'Ativos</span>', '</span>', patterns_to_remove)
-    full_debit_text = get_substring(html_page, 'Dívida Líquida</span>', '</span>', patterns_to_remove)
 
     return {
         'name': get_substring(html_page, 'name-company">', '<', patterns_to_remove),
         'sector':  get_substring(html_page, 'Segmento</span>', '</span>', patterns_to_remove),
         'link': None,
         'price': text_to_number(get_substring(html_page, 'Cotação</span>', '</span>', patterns_to_remove)),
-        'liquidity': text_to_number(get_detailed_value(full_liquidity_text)),
-        'total_issued_shares': text_to_number(get_detailed_value(full_total_issued_shares_text)),
-        'enterprise_value': text_to_number(get_detailed_value(full_total_issued_shares_text)),
-        'equity_value': text_to_number(get_detailed_value(full_equity_value_text)),
-        'net_revenue': None,
-        'net_profit': None,
-        'net_margin': None,
-        'gross_margin': None,
+        'liquidity': get_detailed_value(get_substring(html_page, 'Liquidez Média Diária</span>', '</span>', patterns_to_remove)),
+        'total_issued_shares': get_detailed_value(get_substring(html_page, 'Nº total de papeis</span>', '</span>', patterns_to_remove)),
+        'enterprise_value': get_detailed_value(get_substring(html_page, 'Valor de firma</span>', '</span>', patterns_to_remove)),
+        'equity_value': get_detailed_value(get_substring(html_page, 'Patrimônio Líquido</span>', '</span>', patterns_to_remove)),
+        'net_revenue': get_detailed_value(get_substring(html_page, 'Receita Líquida - (R$)</td>', '</tr>', patterns_to_remove)),
+        'net_profit': get_detailed_value(get_substring(html_page, 'Lucro Líquido - (R$)</td>', '</tr>', patterns_to_remove)),
+        'net_margin': get_detailed_value(get_substring(html_page, 'Margem Líquida - (%)</td>', '</td>', patterns_to_remove)),
+        'gross_margin': get_detailed_value(get_substring(html_page, 'Margem Bruta - (%)</td>', '</td>', patterns_to_remove)),
         'CAGR_revenue': text_to_number(get_substring(html_page, 'período de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
         'CAGR_profit': text_to_number(get_substring(html_page, 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
-        'debit': text_to_number(get_detailed_value(full_debit_text)),,
-        'EBIT': None,
+        'debit': get_detailed_value(get_substring(html_page, 'Dívida Líquida</span>', '</span>', patterns_to_remove)),
+        'EBIT': get_detailed_value(get_substring(html_page, 'EBIT - (R$)</td>', '</tr>', patterns_to_remove)),
         'variation_12M': text_to_number(get_substring(html_page, 'VARIAÇÃO (12M)</span>', '</span>', patterns_to_remove)),
         'variation_30D': None,
         'min_52_weeks': None,
@@ -276,10 +269,10 @@ def convert_investidor10_ticker_data(html_page, json_data):
         'DY': text_to_number(get_substring(html_page, 'DY</span>', '</span>', patterns_to_remove)),
         'latests_dividends': get_leatests_dividends(json_data),
         'AVG_annual_dividends': calculate_AVG_dividends_annual(json_data),
-        'assets_value': text_to_number(get_detailed_value(full_assets_value_text)),
-        'market_value': text_to_number(get_detailed_value(full_market_value_text)),
+        'assets_value': get_detailed_value(get_substring(html_page, 'Ativos</span>', '</span>', patterns_to_remove)),
+        'market_value': get_detailed_value(get_substring(html_page, 'Valor de mercado</span>', '</span>', patterns_to_remove)),
         'PL': text_to_number(get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)),
-        'ROE': None
+        'ROE': get_detailed_value(get_substring(html_page, 'ROE - (%)</td>', '</td>', patterns_to_remove)),
     }
 
 def get_data_from_all_by(ticker):
