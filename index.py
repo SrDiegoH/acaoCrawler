@@ -141,10 +141,10 @@ def get_data_from_fundamentus_by(ticker):
         response = request_get(url, headers)
         html_page = response.text
 
-        #print(f"Converted Fundamentus data: {convert_fundamentus_data(html_page)}")
+        print(f"Converted Fundamentus data: {convert_fundamentus_data(html_page)}")
         return convert_fundamentus_data(html_page)
     except:
-        #print(f"Error on get Fundamentus data: {repr(error)}")
+        print(f"Error on get Fundamentus data: {repr(error)}")
         return None
 
 def convert_fundamentus_data(data):
@@ -214,10 +214,10 @@ def get_data_from_investidor10_by(ticker):
         response = request_get(url, headers)
         json_data = response.json()
 
-        #print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(html_page, json_data)}")
+        print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(html_page, json_data)}")
         return convert_investidor10_ticker_data(html_page, json_data)
     except:
-        #print(f"Error on get Investidor 10 data: {repr(error)}")
+        print(f"Error on get Investidor 10 data: {repr(error)}")
         return None
 
 def calculate_AVG_dividends_annual(dividends):
@@ -278,9 +278,6 @@ def convert_investidor10_ticker_data(html_page, json_data):
 def get_data_from_all_by(ticker):
     data_fundamentus = get_data_from_fundamentus_by(ticker)
     data_investidor10 = get_data_from_investidor10_by(ticker)
-
-    #print(f"Converted Fundamentus Data: {data_fundamentus}")
-    #print(f"Converted Investidor 10 Data: {data_investidor10}")
 
     if not data_fundamentus:
         return data_investidor10
