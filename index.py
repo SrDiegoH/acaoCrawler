@@ -60,7 +60,7 @@ def convert_fundamentus_data(data):
         'link': None,
         'price': text_to_number(get_substring(data, 'Cotação</span>', '</span>', replace_by_paterns=patterns_to_remove)),
         'liquidity': text_to_number(get_substring(data, 'Vol $ méd (2m)</span>', '</span>', replace_by_paterns=patterns_to_remove)),
-        'total_stocks': text_to_number(get_substring(data, 'Nro. Ações</span>', '</span>', replace_by_paterns=patterns_to_remove)),
+        'total_emitted_shares': text_to_number(get_substring(data, 'Nro. Ações</span>', '</span>', replace_by_paterns=patterns_to_remove)),
         'enterprise_value': text_to_number(get_substring(data, 'Valor da firma</span>', '</span>', replace_by_paterns=patterns_to_remove)),
         'equity_value': text_to_number(get_substring(data, 'Patrim. Líq</span>', '</span>', replace_by_paterns=patterns_to_remove)),
         'net_revenue': text_to_number(get_substring(data, 'Receita Líquida</span>', '</span>', replace_by_paterns=patterns_to_remove)),
