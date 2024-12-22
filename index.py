@@ -220,12 +220,11 @@ def convert_investidor10_ticker_data(html_page, json_data):
         '<td class="column-value">'
     ]
 
-    get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>'))
+    get_detailed_value = lambda text: get_substring(text, 'detail-value">', '</div>') #text_to_number(get_substring(text, 'detail-value">', '</div>'))
     
     #sector_subsector = get_substring(html_page, '.br/setores/', '"', patterns_to_remove)
     #subsector = sector_subsector.split('/').replace('-', ' ')
-    
-    print("----->", type(patterns_to_remove))
+
     print("----->", "Receita Líquida" in html_page)
     print("----->", "Receita Líquida - (R$)" in html_page)
     print("----->", "Receita Líquida - (R$)</td>" in html_page)
@@ -235,7 +234,7 @@ def convert_investidor10_ticker_data(html_page, json_data):
         'name': get_substring(html_page, 'name-company">', '<', patterns_to_remove),
         'sector':  get_substring(html_page, 'Segmento</span>', '</span>', patterns_to_remove),
         'link': None,
-        'price': text_to_number(get_substring(html_page, 'Cotação</span>', '</span>', patterns_to_remove)),
+        'price': get_substring(html_page, 'Cotação</span>', '</span>', patterns_to_remove)#text_to_number(get_substring(html_page, 'Cotação</span>', '</span>', patterns_to_remove)),
         'liquidity': get_detailed_value(get_substring(html_page, 'Liquidez Média Diária</span>', '</span>', patterns_to_remove)),
         'total_issued_shares': get_detailed_value(get_substring(html_page, 'Nº total de papeis</span>', '</span>', patterns_to_remove)),
         'enterprise_value': get_detailed_value(get_substring(html_page, 'Valor de firma</span>', '</span>', patterns_to_remove)),
@@ -248,17 +247,17 @@ def convert_investidor10_ticker_data(html_page, json_data):
         'CAGR_profit': text_to_number(get_substring(html_page, 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
         'debit': get_detailed_value(get_substring(html_page, 'Dívida Líquida</span>', '</span>', patterns_to_remove)),
         'EBIT': get_detailed_value(get_substring(html_page, 'EBIT - (R$)</td>', '</tr>', patterns_to_remove)),
-        'variation_12M': text_to_number(get_substring(html_page, 'VARIAÇÃO (12M)</span>', '</span>', patterns_to_remove)),
+        'variation_12M': get_substring(html_page, 'VARIAÇÃO (12M)</span>', '</span>', patterns_to_remove)#text_to_number(get_substring(html_page, 'VARIAÇÃO (12M)</span>', '</span>', patterns_to_remove)),
         'variation_30D': None,
         'min_52_weeks': None,
         'max_52_weeks': None,
-        'PVP': text_to_number(get_substring(html_page, 'P/VP</span>', '</span>', patterns_to_remove)),
-        'DY': text_to_number(get_substring(html_page, 'DY</span>', '</span>', patterns_to_remove)),
+        'PVP': get_substring(html_page, 'P/VP</span>', '</span>', patterns_to_remove)#text_to_number(get_substring(html_page, 'P/VP</span>', '</span>', patterns_to_remove)),
+        'DY': get_substring(html_page, 'DY</span>', '</span>', patterns_to_remove)#text_to_number(get_substring(html_page, 'DY</span>', '</span>', patterns_to_remove)),
         'latests_dividends': get_leatests_dividends(json_data),
         'AVG_annual_dividends': calculate_AVG_dividends_annual(json_data),
         'assets_value': get_detailed_value(get_substring(html_page, 'Ativos</span>', '</span>', patterns_to_remove)),
         'market_value': get_detailed_value(get_substring(html_page, 'Valor de mercado</span>', '</span>', patterns_to_remove)),
-        'PL': text_to_number(get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)),
+        'PL': get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)#text_to_number(get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)),
         'ROE': get_detailed_value(get_substring(html_page, 'ROE - (%)</td>', '</td>', patterns_to_remove)),
     }
 
@@ -300,7 +299,7 @@ def get_data_from_all_by(ticker):
 
     for key, value in data_fundamentus.items():
         if key in data_investidor10 and not value:
-            data_merge[key] = data_fundsexplorer[key]
+            data_merge[key] = data_investidor10[key]
             continue
 
         data_merge[key] = value
