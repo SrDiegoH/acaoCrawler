@@ -221,7 +221,8 @@ def convert_investidor10_ticker_data(html_page, json_data):
     
     #sector_subsector = get_substring(html_page, '.br/setores/', '"', patterns_to_remove)
     #subsector = sector_subsector.split('/').replace('-', ' ')
-
+    print("--->", get_substring(html_page, 'Receita Líquida - (R$)</td>', '</tr>', patterns_to_remove))
+    print("----->", get_substring(html_page, 'Receita Líquida - (R$)</td>', '</tr>'))
     return {
         'name': get_substring(html_page, 'name-company">', '<', patterns_to_remove),
         'sector':  get_substring(html_page, 'Segmento</span>', '</span>', patterns_to_remove),
@@ -267,7 +268,6 @@ def get_data_from_investidor10_by(ticker):
     
         half_html_page = response.text[15898:]
     
-        print(f"Investidor 10 html page: {half_html_page}")
         url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
         response = request_get(url, headers)
         json_data = response.json()
