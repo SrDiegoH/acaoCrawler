@@ -68,6 +68,9 @@ def text_to_number(text, should_convert_thousand_decimal_separators=True, conver
         if should_convert_thousand_decimal_separators:
             text = text.replace('.','').replace(',','.')
 
+        if 'R$' in text:
+            text = text.replace('R$', '')
+
         if '%' in text:
             return float(text.replace('%', '').strip()) / (100 if convert_percent_to_decimal else 1)
 
@@ -220,21 +223,11 @@ def convert_investidor10_ticker_data(html_page, json_data):
         '<td class="column-value">'
     ]
 
-    get_detailed_value = lambda text: get_substring(text, 'detail-value">', '</div>') #text_to_number(get_substring(text, 'detail-value">', '</div>'))
-    
-    #sector_subsector = get_substring(html_page, '.br/setores/', '"', patterns_to_remove)
-    #subsector = sector_subsector.split('/').replace('-', ' ')
-
-    print("----->", "Receita Líquida" in html_page)
-    print("----->", "Receita Líquida - (R$)" in html_page)
-    print("----->", "Receita Líquida - (R$)</td>" in html_page)
-    print("----->", get_substring(html_page, 'Receita Líquida - (R$)</td>', '</tr>', patterns_to_remove))
-    print("------->", get_substring(html_page, 'Receita Líquida - (R$)</td>', '</tr>'))
     return {
         'name': get_substring(html_page, 'name-company">', '<', patterns_to_remove),
         'sector':  get_substring(html_page, 'Segmento</span>', '</span>', patterns_to_remove),
         'link': None,
-        'price': get_substring(html_page, 'Cotação</span>', '</span>', patterns_to_remove),#text_to_number(get_substring(html_page, 'Cotação</span>', '</span>', patterns_to_remove)),
+        'price': text_to_number(get_substring(html_page, 'Cotação</span>', '</span>', patterns_to_remove)),
         'liquidity': get_detailed_value(get_substring(html_page, 'Liquidez Média Diária</span>', '</span>', patterns_to_remove)),
         'total_issued_shares': get_detailed_value(get_substring(html_page, 'Nº total de papeis</span>', '</span>', patterns_to_remove)),
         'enterprise_value': get_detailed_value(get_substring(html_page, 'Valor de firma</span>', '</span>', patterns_to_remove)),
@@ -247,17 +240,17 @@ def convert_investidor10_ticker_data(html_page, json_data):
         'CAGR_profit': text_to_number(get_substring(html_page, 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
         'debit': get_detailed_value(get_substring(html_page, 'Dívida Líquida</span>', '</span>', patterns_to_remove)),
         'EBIT': get_detailed_value(get_substring(html_page, 'EBIT - (R$)</td>', '</tr>', patterns_to_remove)),
-        'variation_12M': get_substring(html_page, 'VARIAÇÃO (12M)</span>', '</span>', patterns_to_remove),#text_to_number(get_substring(html_page, 'VARIAÇÃO (12M)</span>', '</span>', patterns_to_remove)),
+        'variation_12M': text_to_number(get_substring(html_page, 'VARIAÇÃO (12M)</span>', '</span>', patterns_to_remove)),
         'variation_30D': None,
         'min_52_weeks': None,
         'max_52_weeks': None,
-        'PVP': get_substring(html_page, 'P/VP</span>', '</span>', patterns_to_remove),#text_to_number(get_substring(html_page, 'P/VP</span>', '</span>', patterns_to_remove)),
-        'DY': get_substring(html_page, 'DY</span>', '</span>', patterns_to_remove),#text_to_number(get_substring(html_page, 'DY</span>', '</span>', patterns_to_remove)),
+        'PVP': text_to_number(get_substring(html_page, 'P/VP</span>', '</span>', patterns_to_remove)),
+        'DY': text_to_number(get_substring(html_page, 'DY</span>', '</span>', patterns_to_remove)),
         'latests_dividends': get_leatests_dividends(json_data),
         'AVG_annual_dividends': calculate_AVG_dividends_annual(json_data),
         'assets_value': get_detailed_value(get_substring(html_page, 'Ativos</span>', '</span>', patterns_to_remove)),
         'market_value': get_detailed_value(get_substring(html_page, 'Valor de mercado</span>', '</span>', patterns_to_remove)),
-        'PL': get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove),#text_to_number(get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)),
+        'PL': text_to_number(get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)),
         'ROE': get_detailed_value(get_substring(html_page, 'ROE - (%)</td>', '</td>', patterns_to_remove)),
     }
 
@@ -274,12 +267,19 @@ def get_data_from_investidor10_by(ticker):
         response = request_get(url, headers)
     
         half_html_page = response.text[15898:]
-    
+
+        id = get_substring(half_html_page, "tickerId = '", "'")
+
+        url = f'https://investidor10.com.br/api/historico-indicadores/{id}/5/?v=2'
+        response = request_get(url, headers)
+        json_all_data = response.json()
+        
         url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
         response = request_get(url, headers)
-        json_data = response.json()
+        json_dividends_data = response.json()
 
-        print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(half_html_page, json_data)}")
+        print(f"All data: {json_all_data}")
+        print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(half_html_page, json_all_data, json_dividends_data)}")
         return convert_investidor10_ticker_data(half_html_page, json_data)
     except Exception as error:
         print(f"Error on get Investidor 10 data: {traceback.format_exc()}")
