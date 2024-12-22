@@ -141,10 +141,11 @@ def get_data_from_fundamentus_by(ticker):
         response = request_get(url, headers)
         html_page = response.text
 
-        print(f"Converted Fundamentus data: {convert_fundamentus_data(html_page)}")
+        #print(f"Converted Fundamentus data: {convert_fundamentus_data(html_page)}")
+
         return convert_fundamentus_data(html_page)
     except Exception as error:
-        print(f"Error on get Fundamentus data: {repr(error)}")
+        #print(f"Error on get Fundamentus data: {repr(error)}")
         return None
 
 def convert_fundamentus_data(data):
@@ -214,8 +215,8 @@ def get_data_from_investidor10_by(ticker):
         response = request_get(url, headers)
         json_data = response.json()
 
-        print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(html_page, json_data)}")
-        return convert_investidor10_ticker_data(html_page, json_data)
+        print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(half_html_page, json_data)}")
+        return convert_investidor10_ticker_data(half_html_page, json_data)
     except Exception as error:
         print(f"Error on get Investidor 10 data: {repr(error)}")
         return None
