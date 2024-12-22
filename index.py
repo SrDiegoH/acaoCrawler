@@ -3,6 +3,7 @@ import http.client as httplib
 import json
 import os
 import re
+import traceback
 
 from flask import Flask, jsonify, request
 
@@ -126,28 +127,6 @@ def write_to_cache(ticker, data):
         cache_file.write(f'{ticker}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n')
     #print(f'Writed')
 
-def get_data_from_fundamentus_by(ticker):
-    try:
-        url = f'https://fundamentus.com.br/detalhes.php?papel={ticker}'
-    
-        headers = {
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Referer': 'https://fundamentus.com.br/index.php',
-            'Origin': 'https://fundamentus.com.br/index.php',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 OPR/113.0.0.0'
-        }
-    
-        response = request_get(url, headers)
-        html_page = response.text
-
-        #print(f"Converted Fundamentus data: {convert_fundamentus_data(html_page)}")
-
-        return convert_fundamentus_data(html_page)
-    except Exception as error:
-        #print(f"Error on get Fundamentus data: {repr(error)}")
-        return None
-
 def convert_fundamentus_data(data):
     patterns_to_remove = [
         '</span>',
@@ -197,28 +176,26 @@ def convert_fundamentus_data(data):
         'ROE': text_to_number(get_substring(data, 'ROE</span>', '</span>', patterns_to_remove)),
     }
 
-def get_data_from_investidor10_by(ticker):
+def get_data_from_fundamentus_by(ticker):
     try:
+        url = f'https://fundamentus.com.br/detalhes.php?papel={ticker}'
+    
         headers = {
-            'accept': '*/*',
-            'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-            'referer': 'https://investidor10.com.br/acoes/cmig4/',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/114.0.0.0',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Referer': 'https://fundamentus.com.br/index.php',
+            'Origin': 'https://fundamentus.com.br/index.php',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 OPR/113.0.0.0'
         }
     
-        url = f'https://investidor10.com.br/acoes/{ticker}'
         response = request_get(url, headers)
-    
-        half_html_page = response.text[15898:]
-    
-        url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
-        response = request_get(url, headers)
-        json_data = response.json()
+        html_page = response.text
 
-        print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(half_html_page, json_data)}")
-        return convert_investidor10_ticker_data(half_html_page, json_data)
+        #print(f"Converted Fundamentus data: {convert_fundamentus_data(html_page)}")
+
+        return convert_fundamentus_data(html_page)
     except Exception as error:
-        print(f"Error on get Investidor 10 data: {repr(error)}")
+        #print(f"Error on get Fundamentus data: {repr(error)}")
         return None
 
 def calculate_AVG_dividends_annual(dividends):
@@ -275,6 +252,30 @@ def convert_investidor10_ticker_data(html_page, json_data):
         'PL': text_to_number(get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)),
         'ROE': get_detailed_value(get_substring(html_page, 'ROE - (%)</td>', '</td>', patterns_to_remove)),
     }
+
+def get_data_from_investidor10_by(ticker):
+    try:
+        headers = {
+            'accept': '*/*',
+            'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'referer': 'https://investidor10.com.br/acoes/cmig4/',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/114.0.0.0',
+        }
+    
+        url = f'https://investidor10.com.br/acoes/{ticker}'
+        response = request_get(url, headers)
+    
+        half_html_page = response.text[15898:]
+    
+        url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
+        response = request_get(url, headers)
+        json_data = response.json()
+
+        print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(half_html_page, json_data)}")
+        return convert_investidor10_ticker_data(half_html_page, json_data)
+    except Exception as error:
+        print(f"Error on get Investidor 10 data: {traceback.format_exc()}")
+        return None
 
 def get_data_from_all_by(ticker):
     data_fundamentus = get_data_from_fundamentus_by(ticker)
