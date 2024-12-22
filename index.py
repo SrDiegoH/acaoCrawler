@@ -143,7 +143,7 @@ def get_data_from_fundamentus_by(ticker):
 
         print(f"Converted Fundamentus data: {convert_fundamentus_data(html_page)}")
         return convert_fundamentus_data(html_page)
-    except:
+    except Exception as error:
         print(f"Error on get Fundamentus data: {repr(error)}")
         return None
 
@@ -166,7 +166,7 @@ def convert_fundamentus_data(data):
     all_patterns_and_type_info = patterns_to_remove + [ get_substring(data, 'Tipo</span>', '</span>', patterns_to_remove) ]
 
     return {
-        'name': get_substring(data, 'Empresa</span>', '</span>', all_pattern_and_type_info),
+        'name': get_substring(data, 'Empresa</span>', '</span>', all_patterns_and_type_info),
         'sector': get_substring(data, 'Subsetor</span>', '</a>', patterns_to_remove).split('>')[1],
         'link': None,
         'price': text_to_number(get_substring(data, 'Cotação</span>', '</span>', patterns_to_remove)),
@@ -216,7 +216,7 @@ def get_data_from_investidor10_by(ticker):
 
         print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(html_page, json_data)}")
         return convert_investidor10_ticker_data(html_page, json_data)
-    except:
+    except Exception as error:
         print(f"Error on get Investidor 10 data: {repr(error)}")
         return None
 
