@@ -141,8 +141,10 @@ def get_data_from_fundamentus_by(ticker):
         response = request_get(url, headers)
         html_page = response.text
 
+        #print(f"Converted Fundamentus data: {convert_fundamentus_data(html_page)}")
         return convert_fundamentus_data(html_page)
     except:
+        #print(f"Error on get Fundamentus data: {repr(error)}")
         return None
 
 def convert_fundamentus_data(data):
@@ -167,7 +169,7 @@ def convert_fundamentus_data(data):
         'name': get_substring(data, 'Empresa</span>', '</span>', all_pattern_and_type_info),
         'sector': get_substring(data, 'Subsetor</span>', '</a>', patterns_to_remove).split('>')[1],
         'link': None,
-        'price': text_to_number(get_substring(data, 'Cotação</span>', '</span>', =patterns_to_remove)),
+        'price': text_to_number(get_substring(data, 'Cotação</span>', '</span>', patterns_to_remove)),
         'liquidity': text_to_number(get_substring(data, 'Vol $ méd (2m)</span>', '</span>', patterns_to_remove)),
         'total_issued_shares': text_to_number(get_substring(data, 'Nro. Ações</span>', '</span>', patterns_to_remove)),
         'enterprise_value': text_to_number(get_substring(data, 'Valor da firma</span>', '</span>', patterns_to_remove)),
@@ -195,23 +197,28 @@ def convert_fundamentus_data(data):
     }
 
 def get_data_from_investidor10_by(ticker):
-    headers = {
-        'accept': '*/*',
-        'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-        'referer': 'https://investidor10.com.br/acoes/cmig4/',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/114.0.0.0',
-    }
+    try:
+        headers = {
+            'accept': '*/*',
+            'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'referer': 'https://investidor10.com.br/acoes/cmig4/',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/114.0.0.0',
+        }
+    
+        url = f'https://investidor10.com.br/acoes/{ticker}'
+        response = request_get(url, headers)
+    
+        half_html_page = response.text[15898:]
+    
+        url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
+        response = request_get(url, headers)
+        json_data = response.json()
 
-    url = f'https://investidor10.com.br/acoes/{ticker}'
-    response = request_get(url, headers)
-
-    half_html_page = response.text[15898:]
-
-    url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
-    response = request_get(url, headers)
-    json_data = response.json()
-
-    return convert_investidor10_ticker_data(half_html_page, json_data)
+        #print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(html_page, json_data)}")
+        return convert_investidor10_ticker_data(html_page, json_data)
+    except:
+        #print(f"Error on get Investidor 10 data: {repr(error)}")
+        return None
 
 def calculate_AVG_dividends_annual(dividends):
     return sum(dividend['price'] for dividend in dividends) / len(dividends)
