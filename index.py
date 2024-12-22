@@ -219,6 +219,7 @@ def convert_investidor10_ticker_data(html_page, json_dividends_data):
         '<div>',
         '<div class="_card-body">',
         '<div class="value d-flex justify-content-between align-items-center"',
+        '<div class="value d-flex justify-content-between align-items-center" style="margin-top: 10px; width: 100%; padding-right: 0px">',
         'style="margin-top: 10px; width: 100%; padding-right: 0px">',
         '<td class="column-value">'
     ]
@@ -251,7 +252,7 @@ def convert_investidor10_ticker_data(html_page, json_dividends_data):
         'assets_value': get_detailed_value(get_substring(html_page, 'Ativos</span>', '</span>')),
         'market_value': get_detailed_value(get_substring(html_page, 'Valor de mercado</span>', '</span>')),
         'PL': text_to_number(get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)),
-        'ROE': text_to_number(get_substring(html_page, 'lucro líquido / patrimônio líquido&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
+        'ROE': text_to_number(get_substring(html_page, 'lucro líquido / patrimônio líquido&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove))
     }
 
 def get_data_from_investidor10_by(ticker):
