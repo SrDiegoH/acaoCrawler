@@ -224,7 +224,7 @@ def convert_investidor10_ticker_data(html_page, json_data):
     
     #sector_subsector = get_substring(html_page, '.br/setores/', '"', patterns_to_remove)
     #subsector = sector_subsector.split('/').replace('-', ' ')
-    print("->", 'Receita Líquida' is in html_page, " - ", 'Receita Líquida - (R$)' is in html_page, " - ", 'Receita Líquida - (R$)</td>' is in html_page, " - ", )
+    print("->", ('Receita Líquida' is in html_page), " - ", ('Receita Líquida - (R$)' is in html_page), " - ", ('Receita Líquida - (R$)</td>' is in html_page))
     print("--->", get_substring(html_page, 'Receita Líquida - (R$)</td>', '</tr>', patterns_to_remove))
     print("----->", get_substring(html_page, 'Receita Líquida - (R$)</td>', '</tr>'))
     return {
