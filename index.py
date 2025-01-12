@@ -203,8 +203,16 @@ def get_data_from_fundamentus_by(ticker):
 
 def convert_investidor10_ticker_data(html_page, json_dividends_data):
     def get_leatests_dividends(dividends):
+        get_leatest_dividend = lambda dividends, year: next((dividend['price'] for dividend in dividends if dividend['created_at'] == year), None)
+
         current_year = datetime.now().year
-        return next((dividend['price'] for dividend in dividends if dividend['created_at'] == current_year), None)
+
+        value = get_leatest_dividend(dividends, current_year)
+
+        if not value:
+            return get_leatest_dividend(dividends, current_year -1)
+
+        return value
 
     calculate_AVG_dividends_annual = lambda dividends: sum(dividend['price'] for dividend in dividends) / len(dividends)
     get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>'))
