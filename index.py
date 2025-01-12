@@ -215,7 +215,7 @@ def convert_investidor10_ticker_data(html_page, json_dividends_data):
         return value
 
     calculate_AVG_dividends_annual = lambda dividends: sum(dividend['price'] for dividend in dividends) / len(dividends)
-    get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>'))
+    get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>')) if text else None
 
     patterns_to_remove = [
         '<span>',
