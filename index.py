@@ -152,7 +152,7 @@ def convert_fundamentus_data(data):
     return {
         'name': get_substring(data, 'Empresa</span>', '</span>', all_patterns_and_type_info),
         'sector': get_substring(data, 'Subsetor</span>', '</a>', patterns_to_remove).split('>')[1],
-        'link': None,
+        'link': 'https://www.rad.cvm.gov.br/ENET/frmConsultaExternaCVM.aspx',
         'price': text_to_number(get_substring(data, 'Cotação</span>', '</span>', patterns_to_remove)),
         'liquidity': text_to_number(get_substring(data, 'Vol $ méd (2m)</span>', '</span>', patterns_to_remove)),
         'total_issued_shares': text_to_number(get_substring(data, 'Nro. Ações</span>', '</span>', patterns_to_remove)),
