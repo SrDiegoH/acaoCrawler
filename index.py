@@ -177,6 +177,7 @@ def convert_fundamentus_data(data):
         'market_value': text_to_number(get_substring(data, 'Valor de mercado</span>', '</span>', patterns_to_remove)),
         'PL': text_to_number(get_substring(data, 'P/L</span>', '</span>', patterns_to_remove)),
         'ROE': text_to_number(get_substring(data, 'ROE</span>', '</span>', patterns_to_remove)),
+        'payout': None
     }
 
 def get_data_from_fundamentus_by(ticker):
@@ -220,12 +221,13 @@ def convert_investidor10_ticker_data(html_page, json_dividends_data):
     patterns_to_remove = [
         '<span>',
         '<span class="value">',
+        '<td class="column-value">',
         '</div>',
         '<div>',
         '<div class="_card-body">',
+        '<div class="simple-value">',
         '<div class="value d-flex justify-content-between align-items-center"',
-        'style="margin-top: 10px; width: 100%; padding-right: 0px">',
-        '<td class="column-value">'
+        'style="margin-top: 10px; width: 100%; padding-right: 0px">'
     ]
 
     return {
@@ -256,7 +258,8 @@ def convert_investidor10_ticker_data(html_page, json_dividends_data):
         'assets_value': get_detailed_value(get_substring(html_page, 'Ativos</span>', '</span>')),
         'market_value': get_detailed_value(get_substring(html_page, 'Valor de mercado</span>', '</span>')),
         'PL': text_to_number(get_substring(html_page, 'P/L</span>', '</span>', patterns_to_remove)),
-        'ROE': text_to_number(get_substring(html_page, 'lucro líquido / patrimônio líquido&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove))
+        'ROE': text_to_number(get_substring(html_page, 'lucro líquido / patrimônio líquido&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
+        'payout': text_to_number(get_substring(html_page, 'prov. pagos / lucro líquido&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', replace_by_paterns=patterns_to_remove))
     }
 
 def get_data_from_investidor10_by(ticker):
