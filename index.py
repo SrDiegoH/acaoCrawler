@@ -81,7 +81,7 @@ def delete_cache():
         #print('Deleted')
 
 def clear_cache(ticker):
-    #print(f'Cleaning cache')
+    #print('Cleaning cache')
     with open(CACHE_FILE, 'r') as cache_file:
         lines = cache_file.readlines()
 
@@ -89,7 +89,7 @@ def clear_cache(ticker):
         for line in lines:
             if not line.startswith(ticker):
                 cache_file.write(line)
-   #print(f'Cleaned')
+   #print('Cleaned')
 
 def read_cache(ticker, should_clear_cache):
     if not os.path.exists(CACHE_FILE):
@@ -101,18 +101,19 @@ def read_cache(ticker, should_clear_cache):
 
     control_clean_cache = False
 
-    print('Reading cache')
+    #print('Reading cache')
     with open(CACHE_FILE, 'r') as cache_file:
         for line in cache_file:
             if not line.startswith(ticker):
                 continue
 
             _, cached_datetime, data = line.strip().split('#@#')
-            print(f'Found value: Date: {cached_datetime} - Data: {data}')
+
             cached_date = datetime.strptime(cached_datetime, '%Y-%m-%d %H:%M:%S')
 
+            #print(f'Found value: Date: {cached_datetime} - Data: {data}')
             if datetime.now() - cached_date <= CACHE_EXPIRY:
-                print('Finished read')
+                #print('Finished read')
                 return ast.literal_eval(data), cached_date
 
             control_clean_cache = True
@@ -124,11 +125,11 @@ def read_cache(ticker, should_clear_cache):
     return None, None
 
 def write_to_cache(ticker, data):
-    print('Writing cache')
+    #print('Writing cache')
     with open(CACHE_FILE, 'a') as cache_file:
-        print(f'Writed value: {f'{ticker}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n'}')
+        #print(f'Writed value: {f'{ticker}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n'}')
         cache_file.write(f'{ticker}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n')
-    print('Writed')
+    #print('Writed')
 
 def convert_fundamentus_data(data):
     patterns_to_remove = [
@@ -195,11 +196,11 @@ def get_data_from_fundamentus_by(ticker):
         response = request_get(url, headers)
         html_page = response.text
 
-        #print(f"Converted Fundamentus data: {convert_fundamentus_data(html_page)}")
+        #print(f'Converted Fundamentus data: {convert_fundamentus_data(html_page)}')
 
         return convert_fundamentus_data(html_page)
     except Exception as error:
-        #print(f"Error on get Fundamentus data: {traceback.format_exc()}")
+        #print(f'Error on get Fundamentus data: {traceback.format_exc()}')
         return None
 
 def convert_investidor10_ticker_data(html_page, json_dividends_data):
@@ -273,23 +274,16 @@ def get_data_from_investidor10_by(ticker):
     
         url = f'https://investidor10.com.br/acoes/{ticker}'
         response = request_get(url, headers)
-    
         half_html_page = response.text[15898:]
-
-        #id = get_substring(half_html_page, "tickerId = '", "'")
-
-        #url = f'https://investidor10.com.br/api/historico-indicadores/{id}/5/?v=2'
-        #response = request_get(url, headers)
-        #json_all_data = response.json()
         
         url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
         response = request_get(url, headers)
         json_dividends_data = response.json()
 
-        #print(f"Converted Investidor 10 data: {convert_investidor10_ticker_data(half_html_page, json_dividends_data)}")
+        #print(f'Converted Investidor 10 data: {convert_investidor10_ticker_data(half_html_page, json_dividends_data)}')
         return convert_investidor10_ticker_data(half_html_page, json_dividends_data)
     except Exception as error:
-        #print(f"Error on get Investidor 10 data: {traceback.format_exc()}")
+        #print(f'Error on get Investidor 10 data: {traceback.format_exc()}')
         return None
 
 def get_data_from_all_by(ticker):
