@@ -109,7 +109,7 @@ def read_cache(ticker, should_clear_cache):
                 continue
 
             _, cached_datetime, data = line.strip().split('#@#')
-            print('Found value: Date: {cached_datetime} - Data: {data}')
+            print(f'Found value: Date: {cached_datetime} - Data: {data}')
             cached_date = datetime.strptime(cached_datetime, '%Y-%m-%d %H:%M:%S')
 
             if datetime.now() - cached_date <= CACHE_EXPIRY:
