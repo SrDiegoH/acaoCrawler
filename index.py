@@ -1,6 +1,5 @@
+import ast
 from datetime import datetime, timedelta
-import http.client as httplib
-import json
 import os
 import re
 import traceback
@@ -114,7 +113,7 @@ def read_cache(ticker, should_clear_cache):
 
             if datetime.now() - cached_date <= CACHE_EXPIRY:
                 print('Finished read')
-                return json.loads(data.replace("'", '"')), cached_date
+                return ast.literal_eval(data), cached_date
 
             control_clean_cache = True
             break
