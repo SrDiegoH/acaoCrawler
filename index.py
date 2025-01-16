@@ -334,7 +334,7 @@ def get_acao_data(ticker):
     should_use_and_not_delete_cache = should_use_cache and not should_delete_cache
 
     if should_use_and_not_delete_cache:
-        id = sha512(ticker, source, info_names.sort()).hexdigest()
+        id = sha512([ticker, source, info_names.sort()]).hexdigest()
         print(f'Cache Hash ID: {id}')
 
         cached_data, cache_date = read_cache(id, should_clear_cache)
