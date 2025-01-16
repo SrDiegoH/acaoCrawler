@@ -18,8 +18,11 @@ TRUE_BOOL_VALUES = ('1', 's', 'sim', 'y', 'yes', 't', 'true')
 CACHE_FILE = '/tmp/cache.txt'
 CACHE_EXPIRY = timedelta(days=1)
 
-FUNDAMENTUS_SOURCE = 'fundamentus'
-INVESTIDOR10_SOURCE = 'investidor10'
+VALID_SOURCES = {
+    'FUNDAMENTUS_SOURCE': 'fundamentus',
+    'INVESTIDOR10_SOURCE': 'investidor10',
+    'ALL_SOURCE': 'all'
+}
 
 VALID_INFOS = ['name','sector','link','price','liquidity','total_issued_shares','enterprise_value','equity_value','net_revenue','net_profit','net_margin','gross_margin','cagr_revenue','cagr_profit','debit','ebit','variation_12m','variation_30d','min_52_weeks','max_52_weeks','pvp','dy','latests_dividends','avg_annual_dividends','assets_value','market_value','pl','roe','payout']
 
@@ -315,13 +318,14 @@ def request_shares(ticker, source, info_names):
 
 @app.route('/acao/<ticker>', methods=['GET'])
 def get_acao_data(ticker):
-    should_delete_cache = request.args.get('should_delete_cache', '0').lower() in TRUE_BOOL_VALUES
-    should_clear_cache = request.args.get('should_clear_cache', '0').lower() in TRUE_BOOL_VALUES
-    should_use_cache = request.args.get('should_use_cache', '1').lower() in TRUE_BOOL_VALUES
+    should_delete_cache = request.args.get('should_delete_cache', '0').replace(' ', '').lower() in TRUE_BOOL_VALUES
+    should_clear_cache = request.args.get('should_clear_cache', '0').replace(' ', '').lower() in TRUE_BOOL_VALUES
+    should_use_cache = request.args.get('should_use_cache', '1').replace(' ', '').lower() in TRUE_BOOL_VALUES
 
-    source = request.args.get('source', '').lower()
+    source = request.args.get('source', VALID_SOURCES['ALL_SOURCE']).replace(' ', '').lower()
+    source = source if source in VALID_SOURCES.keys() else VALID_SOURCES['ALL_SOURCE']
 
-    info_names = request.args.get('info_names', '').lower().replace(' ', '').split(',')
+    info_names = request.args.get('info_names', '').replace(' ', '').lower().split(',')
     info_names = [ info for info in info_names if info in VALID_INFOS ]
     info_names = info_names if len(info_names) else VALID_INFOS
 
@@ -334,7 +338,7 @@ def get_acao_data(ticker):
     should_use_and_not_delete_cache = should_use_cache and not should_delete_cache
 
     if should_use_and_not_delete_cache:
-        id = f'{ticker}{source if source else "-"}{info_names.sort()}'.encode('utf-8')
+        id = f'{ticker}{source}{info_names.sort()}'.encode('utf-8')
         hash_id = sha512().hexdigest()
         print(f'Cache Hash ID: {hash_id}, From values: {id}, type: {type(info_names)}, {type(info_names.sort())}, {info_names.sort()}, {info_names}')
 
