@@ -85,7 +85,9 @@ def delete_cache():
 def clear_cache(ticker):
     #print('Cleaning cache')
     with open(CACHE_FILE, 'w+') as cache_file:
-        for line in cache_file.readlines():
+        lines = cache_file.readlines()
+
+        for line in lines:
             if not line.startswith(ticker):
                 cache_file.write(line)
    #print('Cleaned')
