@@ -1,5 +1,6 @@
 import ast
 from datetime import datetime, timedelta
+from hashlib import sha512
 import os
 import re
 import traceback
@@ -82,22 +83,22 @@ def delete_cache():
         os.remove(CACHE_FILE)
         #print('Deleted')
 
-def clear_cache(ticker):
+def clear_cache(id):
     #print('Cleaning cache')
     with open(CACHE_FILE, 'w+') as cache_file:
         lines = cache_file.readlines()
 
         for line in lines:
-            if not line.startswith(ticker):
+            if not line.startswith(id):
                 cache_file.write(line)
    #print('Cleaned')
 
-def read_cache(ticker, should_clear_cache):
+def read_cache(id, should_clear_cache):
     if not os.path.exists(CACHE_FILE):
         return None, None
 
     if should_clear_cache:
-        clear_cache(ticker)
+        clear_cache(id)
         return None, None
 
     control_clean_cache = False
@@ -105,7 +106,7 @@ def read_cache(ticker, should_clear_cache):
     #print('Reading cache')
     with open(CACHE_FILE, 'r') as cache_file:
         for line in cache_file:
-            if not line.startswith(ticker):
+            if not line.startswith(id):
                 continue
 
             _, cached_datetime, data = line.strip().split('#@#')
@@ -121,15 +122,15 @@ def read_cache(ticker, should_clear_cache):
             break
 
     if control_clean_cache:
-        clear_cache(ticker)
+        clear_cache(id)
 
     return None, None
 
-def write_to_cache(ticker, data):
+def write_to_cache(id, data):
     #print('Writing cache')
     with open(CACHE_FILE, 'a') as cache_file:
-        #print(f'Writed value: {f'{ticker}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n'}')
-        cache_file.write(f'{ticker}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n')
+        #print(f'Writed value: {f'{id}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n'}')
+        cache_file.write(f'{id}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n')
     #print('Writed')
 
 def convert_fundamentus_data(data, info_names):
@@ -211,7 +212,7 @@ def convert_investidor10_ticker_data(html_page, json_dividends, info_names):
 
         value = get_leatest_dividend(dividends, current_year)
 
-        return value if value get_leatest_dividend(dividends, current_year -1)
+        return value if value else get_leatest_dividend(dividends, current_year -1)
 
     get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>')) if text else None
 
@@ -330,8 +331,12 @@ def get_acao_data(ticker):
     if should_delete_cache:
         delete_cache()
 
-    if should_use_cache and not should_delete_cache:
-        cached_data , cache_date = read_cache(ticker, should_clear_cache)
+    should_use_and_not_delete_cache = should_use_cache and not should_delete_cache
+
+    if should_use_and_not_delete_cache:
+        id = sha512(ticker, source, info_names.sort()).hexdigest()
+
+        cached_data , cache_date = read_cache(id, should_clear_cache)
 
         if cached_data:
             #print(f'Data from Cache: {cached_data}')
@@ -340,8 +345,8 @@ def get_acao_data(ticker):
     data = request_shares(ticker, source, info_names)
     #print(f'Data from Source: {data}')
 
-    if should_use_cache and not should_delete_cache and not should_clear_cache:
-        write_to_cache(ticker, data)
+    if should_use_and_not_delete_cache and not should_clear_cache:
+        write_to_cache(id, data)
 
     return jsonify({'data': data, 'source': 'fresh', 'date': datetime.now().strftime("%d/%m/%Y, %H:%M")}), 200
 
