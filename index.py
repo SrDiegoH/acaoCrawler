@@ -141,6 +141,7 @@ def convert_fundamentus_data(data, info_names):
       '<span class="txt">',
       '<span class="oscil">',
       '<font color="#F75D59">',
+      '<font color="#306EFF">',
       '</td>',
       '<td class="data">',
       '<td class="data w1">',
@@ -279,7 +280,7 @@ def get_data_from_investidor10(ticker, info_names):
         half_html_page = response.text[15898:]
 
         json_dividends_data = {}
-        if 'latests_dividends' in info_names or 'AVG_annual_dividends' in info_names:
+        if 'latests_dividends' in info_names or 'avg_annual_dividends' in info_names:
           url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
           response = request_get(url, headers)
           json_dividends_data = response.json()
