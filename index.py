@@ -106,7 +106,7 @@ def read_cache(hash_id, should_clear_cache):
 
     control_clean_cache = False
 
-    print('Reading cache')
+    #print('Reading cache')
     with open(CACHE_FILE, 'r') as cache_file:
         for line in cache_file:
             if not line.startswith(hash_id):
@@ -116,9 +116,9 @@ def read_cache(hash_id, should_clear_cache):
 
             cached_date = datetime.strptime(cached_datetime, '%Y-%m-%d %H:%M:%S')
 
-            print(f'Found value: Date: {cached_datetime} - Data: {data}')
+            #print(f'Found value: Date: {cached_datetime} - Data: {data}')
             if datetime.now() - cached_date <= CACHE_EXPIRY:
-                print('Finished read')
+                #print('Finished read')
                 return ast.literal_eval(data), cached_date
 
             control_clean_cache = True
@@ -130,11 +130,11 @@ def read_cache(hash_id, should_clear_cache):
     return None, None
 
 def write_to_cache(hash_id, data):
-    print('Writing cache')
+    #print('Writing cache')
     with open(CACHE_FILE, 'a') as cache_file:
-        print(f'Writed value: {f'{hash_id}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n'}')
+        #print(f'Writed value: {f'{hash_id}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n'}')
         cache_file.write(f'{hash_id}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n')
-    print('Writed')
+    #print('Writed')
 
 def convert_fundamentus_data(data, info_names):
     patterns_to_remove = [
@@ -329,8 +329,8 @@ def get_acao_data(ticker):
     info_names = [ info for info in info_names if info in VALID_INFOS ]
     info_names = info_names if len(info_names) else VALID_INFOS
 
-    print(f'Delete cache? {should_delete_cache}, Clear cache? {should_clear_cache}, Use cache? {should_use_cache}')
-    print(f'Ticker: {ticker}, Source: {source}, Info names: {info_names}')
+    #print(f'Delete cache? {should_delete_cache}, Clear cache? {should_clear_cache}, Use cache? {should_use_cache}')
+    #print(f'Ticker: {ticker}, Source: {source}, Info names: {info_names}')
 
     if should_delete_cache:
         delete_cache()
@@ -340,12 +340,12 @@ def get_acao_data(ticker):
     if should_use_and_not_delete_cache:
         id = f'{ticker}{source}{','.join(sorted(info_names))}'.encode('utf-8')
         hash_id = sha512(id).hexdigest()
-        print(f'Cache Hash ID: {hash_id}, From values: {id}')
+        #print(f'Cache Hash ID: {hash_id}, From values: {id}')
 
         cached_data, cache_date = read_cache(hash_id, should_clear_cache)
 
         if cached_data:
-            print(f'Data from Cache: {cached_data}')
+            #print(f'Data from Cache: {cached_data}')
             return jsonify({'data': cached_data, 'source': 'cache', 'date': cache_date.strftime("%d/%m/%Y, %H:%M")}), 200
 
     data = request_shares(ticker, source, info_names)
