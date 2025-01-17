@@ -309,9 +309,9 @@ def get_data_from_all_sources(ticker, info_names):
     return { **data_fundamentus, **data_investidor10 }
 
 def request_shares(ticker, source, info_names):
-    if source == FUNDAMENTUS_SOURCE:
+    if source == VALID_SOURCES['FUNDAMENTUS_SOURCE']:
         return get_data_from_fundamentus(ticker, info_names)
-    elif source == INVESTIDOR10_SOURCE:
+    elif source == VALID_SOURCES['INVESTIDOR10_SOURCE']:
         return get_data_from_investidor10(ticker, info_names)
 
     return get_data_from_all_sources(ticker, info_names)
