@@ -323,7 +323,7 @@ def get_acao_data(ticker):
     should_use_cache = request.args.get('should_use_cache', '1').replace(' ', '').lower() in TRUE_BOOL_VALUES
 
     source = request.args.get('source', VALID_SOURCES['ALL_SOURCE']).replace(' ', '').lower()
-    source = source if source in VALID_SOURCES.keys() else VALID_SOURCES['ALL_SOURCE']
+    source = source if source in VALID_SOURCES.values() else VALID_SOURCES['ALL_SOURCE']
 
     info_names = request.args.get('info_names', '').replace(' ', '').lower().split(',')
     info_names = [ info for info in info_names if info in VALID_INFOS ]
