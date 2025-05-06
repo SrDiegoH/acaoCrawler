@@ -211,11 +211,7 @@ def convert_investidor10_ticker_data(html_page, json_dividends, info_names):
     def get_leatests_dividends(dividends):
         get_leatest_dividend = lambda dividends, year: next((dividend['price'] for dividend in dividends if dividend['created_at'] == year), None)
 
-        current_year = datetime.now().year
-
-        value = get_leatest_dividend(dividends, current_year)
-
-        return value if value else get_leatest_dividend(dividends, current_year -1)
+        return get_leatest_dividend(dividends, datetime.now().year -1)
 
     get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>')) if text else None
 
