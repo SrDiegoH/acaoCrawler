@@ -18,9 +18,10 @@ CACHE_FILE = '/tmp/cache.txt'
 CACHE_EXPIRY = timedelta(days=1)
 
 VALID_SOURCES = {
+    'ALL_SOURCE': 'all',
     'FUNDAMENTUS_SOURCE': 'fundamentus',
-    'INVESTIDOR10_SOURCE': 'investidor10',
-    'ALL_SOURCE': 'all'
+    'INFOMONEY_SOURCE': 'infomoney',
+    'INVESTIDOR10_SOURCE': 'investidor10'
 }
 
 VALID_INFOS = ['assets_value', 'avg_annual_dividends', 'cagr_profit', 'cagr_revenue', 'debit', 'dy', 'ebit', 'enterprise_value', 'equity_value', 'gross_margin', 'latests_dividends', 'link', 'liquidity', 'market_value', 'max_52_weeks', 'min_52_weeks', 'name', 'net_margin', 'net_profit', 'net_revenue', 'payout', 'pl', 'price', 'pvp', 'roe', 'sector', 'total_issued_shares', 'variation_12m', 'variation_30d']
