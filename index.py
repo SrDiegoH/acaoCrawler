@@ -9,13 +9,17 @@ from flask import Flask, jsonify, request
 
 import requests
 
-app = Flask(__name__)
-app.json.sort_keys = False
-
-TRUE_BOOL_VALUES = ('1', 's', 'sim', 'y', 'yes', 't', 'true')
-
 CACHE_FILE = '/tmp/cache.txt'
 CACHE_EXPIRY = timedelta(days=1)
+
+DATE_FORMAT = '%d-%m-%Y %H:%M:%S'
+
+DEBUG_LOG_LEVEL = 'DEBUG'
+ERROR_LOG_LEVEL = 'ERROR'
+INFO_LOG_LEVEL = 'INFO'
+LOG_LEVEL = os.environ.get('LOG_LEVEL', ERROR_LOG_LEVEL)
+
+SEPARATOR = '#@#'
 
 VALID_SOURCES = {
     'ALL_SOURCE': 'all',
@@ -24,15 +28,155 @@ VALID_SOURCES = {
     'INVESTIDOR10_SOURCE': 'investidor10'
 }
 
-VALID_INFOS = ['assets_value', 'avg_annual_dividends', 'cagr_profit', 'cagr_revenue', 'debit', 'dy', 'ebit', 'enterprise_value', 'equity_value', 'gross_margin', 'latests_dividends', 'link', 'liquidity', 'market_value', 'max_52_weeks', 'min_52_weeks', 'name', 'net_margin', 'net_profit', 'net_revenue', 'payout', 'pl', 'price', 'pvp', 'roe', 'sector', 'total_issued_shares', 'variation_12m', 'variation_30d']
+VALID_INFOS = [
+    'assets_value',
+    'avg_annual_dividends',
+    'avg_price',
+    'cagr_profit',
+    'cagr_revenue',
+    'debit',
+    'dy',
+    'ebit',
+    'enterprise_value',
+    'equity_value',
+    'gross_margin',
+    'latests_dividends',
+    'link',
+    'liquidity',
+    'market_value',
+    'max_52_weeks',
+    'mayer_multiple',
+    'min_52_weeks',
+    'name',
+    'net_margin',
+    'net_profit',
+    'net_revenue',
+    'payout',
+    'pl',
+    'price',
+    'pvp',
+    'roe',
+    'sector',
+    'total_issued_shares',
+    'variation_12m',
+    'variation_30d'
+]
 
-def request_get(url, headers=None):
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
+app = Flask(__name__)
+app.json.sort_keys = False
 
-    #print(f'Response from {url} : {response}')
+def log_error(message):
+    if LOG_LEVEL == ERROR_LOG_LEVEL or LOG_LEVEL == INFO_LOG_LEVEL or LOG_LEVEL == DEBUG_LOG_LEVEL:
+        print(f'{datetime.now().strftime(DATE_FORMAT)} - {ERROR_LOG_LEVEL} - {message}')
 
-    return response
+def log_info(message):
+    if LOG_LEVEL == INFO_LOG_LEVEL or LOG_LEVEL == DEBUG_LOG_LEVEL:
+        print(f'{datetime.now().strftime(DATE_FORMAT)} - {INFO_LOG_LEVEL} - {message}')
+
+def log_debug(message):
+    if LOG_LEVEL == DEBUG_LOG_LEVEL:
+        print(f'{datetime.now().strftime(DATE_FORMAT)} - {DEBUG_LOG_LEVEL} - {message}')
+
+def cache_exists():
+    if os.path.exists(CACHE_FILE):
+        return True
+
+    log_info('No cache file found')
+    return False
+
+def upsert_cache(id, data):
+    lines = []
+    updated = False
+
+    if cache_exists():
+        with open(CACHE_FILE, 'r') as cache_file:
+            lines = cache_file.readlines()
+
+    with open(CACHE_FILE, 'w') as cache_file:
+        for line in lines:
+            if not line.startswith(id):
+                cache_file.write(line)
+                continue
+
+            _, old_cached_date_as_text, old_data_as_text = line.strip().split(SEPARATOR)
+            old_data = ast.literal_eval(old_data_as_text)
+
+            combined_data = { **old_data, **data }
+            updated_line = f'{id}{SEPARATOR}{old_cached_date_as_text}{SEPARATOR}{combined_data}\n'
+            cache_file.write(updated_line)
+            updated = True
+
+        if not updated:
+            new_line = f'{id}{SEPARATOR}{datetime.now().strftime(DATE_FORMAT)}{SEPARATOR}{data}\n'
+            cache_file.write(new_line)
+            log_info(f'New cache entry created for "{id}"')
+
+    if updated:
+        log_info(f'Cache updated for "{id}"')
+
+def clear_cache(id):
+    if not cache_exists():
+        return
+
+    log_debug('Cleaning cache')
+
+    with open(CACHE_FILE, 'r') as cache_file:
+        lines = cache_file.readlines()
+
+    with open(CACHE_FILE, 'w') as cache_file:
+        cache_file.writelines(line for line in lines if not line.startswith(id))
+
+    log_info(f'Cache cleaning completed for "{id}"')
+
+def read_cache(id):
+    if not cache_exists():
+        return None
+
+    log_debug('Reading cache')
+
+    clear_cache_control = False
+
+    with open(CACHE_FILE, 'r') as cache_file:
+        for line in cache_file:
+            if not line.startswith(id):
+                continue
+
+            _, cached_date_as_text, data = line.strip().split(SEPARATOR)
+            cached_date = datetime.strptime(cached_date_as_text, DATE_FORMAT)
+
+            if datetime.now() - cached_date <= CACHE_EXPIRY:
+                log_debug(f'Cache hit for "{id}" (Date: {cached_date_as_text})')
+                return ast.literal_eval(data)
+
+            log_debug(f'Cache expired for "{id}" (Date: {cached_date_as_text})')
+            clear_cache_control = True
+            break
+
+    if clear_cache_control:
+        clear_cache(id)
+
+    log_info(f'No cache entry found for "{id}"')
+    return None
+
+def delete_cache():
+    if not cache_exists():
+        return
+
+    log_debug('Deleting cache')
+
+    os.remove(CACHE_FILE)
+
+    log_info('Cache deletion completed')
+
+def preprocess_cache(id, should_delete_all_cache, should_clear_cached_data, should_use_cache):
+    if should_delete_all_cache:
+        delete_cache()
+    elif should_clear_cached_data:
+        clear_cache(id)
+
+    can_use_cache = should_use_cache and not (should_delete_all_cache or should_clear_cached_data)
+
+    return can_use_cache
 
 def get_substring(text, start_text, end_text, replace_by_paterns=[], should_remove_tags=False):
     start_index = text.find(start_text)
@@ -80,61 +224,21 @@ def text_to_number(text, should_convert_thousand_decimal_separators=True, conver
     except:
         return 0
 
-def delete_cache():
-    if os.path.exists(CACHE_FILE):
-        #print('Deleting cache')
-        os.remove(CACHE_FILE)
-        #print('Deleted')
+def request_get(url, headers=None):
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
 
-def clear_cache(hash_id):
-    #print('Cleaning cache')
-    with open(CACHE_FILE, 'w+') as cache_file:
-        lines = cache_file.readlines()
+    log_debug(f'Response from {url} : {response}')
 
-        for line in lines:
-            if not line.startswith(hash_id):
-                cache_file.write(line)
-   #print('Cleaned')
+    return response
 
-def read_cache(hash_id, should_clear_cache):
-    if not os.path.exists(CACHE_FILE):
-        return None, None
+def request_post(url, headers=None, data=None):
+    response = requests.post(url, headers=headers, data=data)
+    response.raise_for_status()
 
-    if should_clear_cache:
-        clear_cache(hash_id)
-        return None, None
+    log_debug(f'Response from {url} : {response}')
 
-    control_clean_cache = False
-
-    #print('Reading cache')
-    with open(CACHE_FILE, 'r') as cache_file:
-        for line in cache_file:
-            if not line.startswith(hash_id):
-                continue
-
-            _, cached_datetime, data = line.strip().split('#@#')
-
-            cached_date = datetime.strptime(cached_datetime, '%Y-%m-%d %H:%M:%S')
-
-            #print(f'Found value: Date: {cached_datetime} - Data: {data}')
-            if datetime.now() - cached_date <= CACHE_EXPIRY:
-                #print('Finished read')
-                return ast.literal_eval(data), cached_date
-
-            control_clean_cache = True
-            break
-
-    if control_clean_cache:
-        clear_cache(hash_id)
-
-    return None, None
-
-def write_to_cache(hash_id, data):
-    #print('Writing cache')
-    with open(CACHE_FILE, 'a') as cache_file:
-        #print(f'Writed value: {f'{hash_id}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n'}')
-        cache_file.write(f'{hash_id}#@#{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}#@#{data}\n')
-    #print('Writed')
+    return response
 
 def convert_fundamentus_data(data, info_names):
     patterns_to_remove = [
@@ -152,35 +256,37 @@ def convert_fundamentus_data(data, info_names):
     ]
 
     ALL_INFO = {
-        'name': lambda: get_substring(data, 'Empresa</span>', '</span>', patterns_to_remove + [ get_substring(data, 'Tipo</span>', '</span>', patterns_to_remove) ]),
-        'sector': lambda: get_substring(data, 'Subsetor</span>', '</a>', patterns_to_remove).split('>')[1],
-        'link': lambda: 'https://www.rad.cvm.gov.br/ENET/frmConsultaExternaCVM.aspx',
-        'price': lambda: text_to_number(get_substring(data, 'Cotação</span>', '</span>', patterns_to_remove)),
-        'liquidity': lambda: text_to_number(get_substring(data, 'Vol $ méd (2m)</span>', '</span>', patterns_to_remove)),
-        'total_issued_shares': lambda: text_to_number(get_substring(data, 'Nro. Ações</span>', '</span>', patterns_to_remove)),
+        'assets_value': lambda: text_to_number(get_substring(data, 'Ativo</span>', '</span>', patterns_to_remove)),
+        'avg_annual_dividends': lambda: None,
+        'avg_price': lambda: None,
+        'cagr_profit': lambda: None,
+        'cagr_revenue': lambda: None,
+        'debit': lambda: text_to_number(get_substring(data, 'Dív. Líquida</span>', '</span>', patterns_to_remove)),
+        'dy': lambda: text_to_number(get_substring(data, 'Div. Yield</span>', '</span>', patterns_to_remove)),
+        'ebit': lambda: text_to_number(get_substring(data, '>EBIT</span>', '</span>', patterns_to_remove)),
         'enterprise_value': lambda: text_to_number(get_substring(data, 'Valor da firma</span>', '</span>', patterns_to_remove)),
         'equity_value': lambda: text_to_number(get_substring(data, 'Patrim. Líq</span>', '</span>', patterns_to_remove)),
-        'net_revenue': lambda: text_to_number(get_substring(data, 'Receita Líquida</span>', '</span>', patterns_to_remove)),
-        'net_profit': lambda: text_to_number(get_substring(data, 'Lucro Líquido</span>', '</span>', patterns_to_remove)),
-        'net_margin': lambda: text_to_number(get_substring(data, 'Marg. Líquida</span>', '</span>', patterns_to_remove)),
         'gross_margin': lambda: text_to_number(get_substring(data, 'Marg. Bruta</span>', '</span>', patterns_to_remove)),
-        'cagr_revenue': lambda: None,
-        'cagr_profit': lambda: None,
-        'debit': lambda: text_to_number(get_substring(data, 'Dív. Líquida</span>', '</span>', patterns_to_remove)),
-        'ebit': lambda: text_to_number(get_substring(data, '>EBIT</span>', '</span>', patterns_to_remove)),
-        'variation_12m': lambda: text_to_number(get_substring(data, '12 meses</span>', '</font>', patterns_to_remove)),
-        'variation_30d': lambda: text_to_number(get_substring(data, '30 dias</span>', '</font>', patterns_to_remove)),
-        'min_52_weeks': lambda: text_to_number(get_substring(data, 'Min 52 sem</span>', '</span>', patterns_to_remove)),
-        'max_52_weeks': lambda: text_to_number(get_substring(data, 'Max 52 sem</span>', '</span>', patterns_to_remove)),
-        'pvp': lambda: text_to_number(get_substring(data, 'P/VP</span>', '</span>', patterns_to_remove)),
-        'dy': lambda: text_to_number(get_substring(data, 'Div. Yield</span>', '</span>', patterns_to_remove)),
         'latests_dividends': lambda: None,
-        'avg_annual_dividends': lambda: None,
-        'assets_value': lambda: text_to_number(get_substring(data, 'Ativo</span>', '</span>', patterns_to_remove)),
+        'link': lambda: 'https://www.rad.cvm.gov.br/ENET/frmConsultaExternaCVM.aspx',
+        'liquidity': lambda: text_to_number(get_substring(data, 'Vol $ méd (2m)</span>', '</span>', patterns_to_remove)),
         'market_value': lambda: text_to_number(get_substring(data, 'Valor de mercado</span>', '</span>', patterns_to_remove)),
+        'max_52_weeks': lambda: text_to_number(get_substring(data, 'Max 52 sem</span>', '</span>', patterns_to_remove)),
+        'mayer_multiple': lambda: None,
+        'min_52_weeks': lambda: text_to_number(get_substring(data, 'Min 52 sem</span>', '</span>', patterns_to_remove)),
+        'name': lambda: get_substring(data, 'Empresa</span>', '</span>', patterns_to_remove + [ get_substring(data, 'Tipo</span>', '</span>', patterns_to_remove) ]),
+        'net_margin': lambda: text_to_number(get_substring(data, 'Marg. Líquida</span>', '</span>', patterns_to_remove)),
+        'net_profit': lambda: text_to_number(get_substring(data, 'Lucro Líquido</span>', '</span>', patterns_to_remove)),
+        'net_revenue': lambda: text_to_number(get_substring(data, 'Receita Líquida</span>', '</span>', patterns_to_remove)),
+        'payout': lambda: None,
         'pl': lambda: text_to_number(get_substring(data, 'P/L</span>', '</span>', patterns_to_remove)),
+        'price': lambda: text_to_number(get_substring(data, 'Cotação</span>', '</span>', patterns_to_remove)),
+        'pvp': lambda: text_to_number(get_substring(data, 'P/VP</span>', '</span>', patterns_to_remove)),
         'roe': lambda: text_to_number(get_substring(data, 'ROE</span>', '</span>', patterns_to_remove)),
-        'payout': lambda: None
+        'sector': lambda: get_substring(data, 'Subsetor</span>', '</a>', patterns_to_remove).split('>')[1],
+        'total_issued_shares': lambda: text_to_number(get_substring(data, 'Nro. Ações</span>', '</span>', patterns_to_remove)),
+        'variation_12m': lambda: text_to_number(get_substring(data, '12 meses</span>', '</font>', patterns_to_remove)),
+        'variation_30d': lambda: text_to_number(get_substring(data, '30 dias</span>', '</font>', patterns_to_remove))
     }
 
     final_data = { info: ALL_INFO[info]() for info in info_names}
@@ -202,10 +308,88 @@ def get_data_from_fundamentus(ticker, info_names):
         response = request_get(url, headers)
         html_page = response.text
 
-        #print(f'Converted Fundamentus data: {convert_fundamentus_data(html_page, info_names)}')
+        log_debug(f'Converted Fundamentus data: {convert_fundamentus_data(html_page, info_names)}')
         return convert_fundamentus_data(html_page, info_names)
     except Exception as error:
-        #print(f'Error on get Fundamentus data: {traceback.format_exc()}')
+        log_debug(f'Error on get Fundamentus data: {traceback.format_exc()}')
+        return None
+
+
+def convert_infomoney_data(data, info_names):
+    prices = [ text_to_number(price[2]) for price in data ]
+    price = text_to_number(prices[0])
+    avg_price = sum(prices) / len(prices)
+
+    ALL_INFO = {
+        'assets_value': lambda: None,
+        'avg_annual_dividends': lambda: None,
+        'avg_price': lambda: avg_price,
+        'cagr_profit': lambda: None,
+        'cagr_revenue': lambda: None,
+        'debit': lambda: None,
+        'dy': lambda: None,
+        'ebit':  lambda: None,
+        'enterprise_value': lambda: None,
+        'equity_value': lambda: None,
+        'gross_margin': lambda: None,
+        'latests_dividends': lambda: None,
+        'link': lambda: None,
+        'liquidity': lambda: None,
+        'market_value': lambda: None,
+        'max_52_weeks': lambda: max(prices),
+        'mayer_multiple': lambda: price / avg_price,
+        'min_52_weeks': lambda: min(prices),
+        'name': lambda: None,
+        'net_margin': lambda: None,
+        'net_profit': lambda: None,
+        'net_revenue': lambda: None,
+        'payout': lambda: None,
+        'pl': lambda: None,
+        'price': lambda: None,
+        'pvp': lambda: None,
+        'roe': lambda: None,
+        'sector':  lambda: None,
+        'total_issued_shares': lambda: None,
+        'variation_12m': lambda: None,
+        'variation_30d': lambda: None
+    }
+
+    final_data = { info: ALL_INFO[info]() for info in info_names }
+
+    return final_data
+
+def get_data_from_infomoney(ticker, info_names):
+    try:
+        headers = {
+            'accept': 'application/json, text/javascript, */*; q=0.01',
+            'accept-language': 'pt-BR,pt;q=0.9,en;q=0.8,ko;q=0.7',
+            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'dnt': '1',
+            'origin': 'https://www.infomoney.com.br',
+            'priority': 'u=1, i',
+            'referer': 'https://www.infomoney.com.br/cotacoes/b3/acao/banco-do-brasil-bbas3/historico/',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 OPR/120.0.0.0',
+            'x-requested-with': 'XMLHttpRequest'
+        }
+
+        base_url = 'https://www.infomoney.com.br/wp-json/infomoney/v1/quotes/history'
+
+        today = datetime.now()
+        today_day_month = f'{today.day if today.day >= 10 else f"0{today.day}"}%2F{today.month if today.month >= 10 else f"0{today.month}"}'
+
+        past_200_days = today - timedelta(days=365)
+        past_200_days_day_month = f'{past_200_days.day if past_200_days.day >= 10 else f"0{past_200_days.day}"}%2F{past_200_days.month if past_200_days.month >= 10 else f"0{past_200_days.month}"}'
+
+        form_data = f'page=0&numberItems=200&initialDate={past_200_days_day_month}%2F{past_200_days.year}&finalDate={today_day_month}%2F{today.year}&symbol={ticker}'
+
+        response = request_post(base_url, headers=headers, data=form_data)
+        prices = response.json()
+
+        converted_data = convert_infomoney_data(prices, info_names)
+        log_debug(f'Converted fresh InfoMoney data: {converted_data}')
+        return converted_data
+    except:
+        log_error(f'Error fetching InfoMoney data for "{ticker}": {traceback.format_exc()}')
         return None
 
 def convert_investidor10_ticker_data(page, dividends, info_names):
@@ -225,35 +409,37 @@ def convert_investidor10_ticker_data(page, dividends, info_names):
     ]
 
     ALL_INFO = {
-        'name': lambda: get_substring(page, 'name-company">', '<', patterns_to_remove),
-        'sector':  lambda: get_substring(page, 'Segmento</span>', '</span>', patterns_to_remove),
-        'link': lambda: None,
-        'price': lambda: text_to_number(get_substring(page, 'Cotação</span>', '</span>', patterns_to_remove)),
-        'liquidity': lambda: get_detailed_value(get_substring(page, 'Liquidez Média Diária</span>', '</span>')),
-        'total_issued_shares': lambda: get_detailed_value(get_substring(page, 'Nº total de papeis</span>', '</span>')),
+        'assets_value': lambda: get_detailed_value(get_substring(page, 'Ativos</span>', '</span>')),
+        'avg_annual_dividends': lambda: (sum(dividend['price'] for dividend in dividends if dividend['created_at'] != current_year) / (len(dividends) -1 if dividends_has_current_year else len(dividends))) if dividends else None,
+        'avg_price': lambda: None,
+        'cagr_profit': lambda: text_to_number(get_substring(page, 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
+        'cagr_revenue': lambda: text_to_number(get_substring(page, 'período de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
+        'debit': lambda: get_detailed_value(get_substring(page, 'Dívida Líquida</span>', '</span>')),
+        'dy': lambda: text_to_number(get_substring(page, 'DY</span>', '</span>', patterns_to_remove)),
+        'ebit':  lambda: None,
         'enterprise_value': lambda: get_detailed_value(get_substring(page, 'Valor de firma</span>', '</span>')),
         'equity_value': lambda: get_detailed_value(get_substring(page, 'Patrimônio Líquido</span>', '</span>')),
-        'net_revenue': lambda: None,
-        'net_profit': lambda: None,
-        'net_margin': lambda: text_to_number(get_substring(page, 'lucro líquido / receita líquida&lt;/b&gt;&lt;br&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
         'gross_margin': lambda: text_to_number(get_substring(page, 'lucro bruto / receita líquida&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
-        'cagr_revenue': lambda: text_to_number(get_substring(page, 'período de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
-        'cagr_profit': lambda: text_to_number(get_substring(page, 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
-        'debit': lambda: get_detailed_value(get_substring(page, 'Dívida Líquida</span>', '</span>')),
-        'ebit':  lambda: None,
-        'variation_12m': lambda: text_to_number(get_substring(page, 'VARIAÇÃO (12M)</span>', '</span>', patterns_to_remove)),
-        'variation_30d': lambda: None,
-        'min_52_weeks': lambda: None,
-        'max_52_weeks': lambda: None,
-        'pvp': lambda: text_to_number(get_substring(page, 'P/VP</span>', '</span>', patterns_to_remove)),
-        'dy': lambda: text_to_number(get_substring(page, 'DY</span>', '</span>', patterns_to_remove)),
         'latests_dividends': lambda: next((dividend['price'] for dividend in dividends if dividend['created_at'] == (current_year if dividends_has_current_year else current_year -1)), None) if dividends else None,
-        'avg_annual_dividends': lambda: (sum(dividend['price'] for dividend in dividends if dividend['created_at'] != current_year) / (len(dividends) -1 if dividends_has_current_year else len(dividends))) if dividends else None,
-        'assets_value': lambda: get_detailed_value(get_substring(page, 'Ativos</span>', '</span>')),
+        'link': lambda: None,
+        'liquidity': lambda: get_detailed_value(get_substring(page, 'Liquidez Média Diária</span>', '</span>')),
         'market_value': lambda: get_detailed_value(get_substring(page, 'Valor de mercado</span>', '</span>')),
+        'max_52_weeks': lambda: None,
+        'mayer_multiple': lambda: None,
+        'min_52_weeks': lambda: None,
+        'name': lambda: get_substring(page, 'name-company">', '<', patterns_to_remove),
+        'net_margin': lambda: text_to_number(get_substring(page, 'lucro líquido / receita líquida&lt;/b&gt;&lt;br&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
+        'net_profit': lambda: None,
+        'net_revenue': lambda: None,
+        'payout': lambda: text_to_number(get_substring(page, 'prov. pagos / lucro líquido&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
         'pl': lambda: text_to_number(get_substring(page, 'P/L</span>', '</span>', patterns_to_remove)),
+        'price': lambda: text_to_number(get_substring(page, 'Cotação</span>', '</span>', patterns_to_remove)),
+        'pvp': lambda: text_to_number(get_substring(page, 'P/VP</span>', '</span>', patterns_to_remove)),
         'roe': lambda: text_to_number(get_substring(page, 'lucro líquido / patrimônio líquido&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
-        'payout': lambda: text_to_number(get_substring(page, 'prov. pagos / lucro líquido&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove))
+        'sector':  lambda: get_substring(page, 'Segmento</span>', '</span>', patterns_to_remove),
+        'total_issued_shares': lambda: get_detailed_value(get_substring(page, 'Nº total de papeis</span>', '</span>')),
+        'variation_12m': lambda: text_to_number(get_substring(page, 'VARIAÇÃO (12M)</span>', '</span>', patterns_to_remove)),
+        'variation_30d': lambda: None
     }
 
     final_data = { info: ALL_INFO[info]() for info in info_names}
@@ -279,78 +465,150 @@ def get_data_from_investidor10(ticker, info_names):
           response = request_get(url, headers)
           dividends = response.json()
 
-        #print(f'Converted Investidor 10 data: {convert_investidor10_ticker_data(html_page, dividends)}')
-        return convert_investidor10_ticker_data(html_page, dividends, info_names)
+        converted_data = convert_investidor10_ticker_data(html_page, dividends, info_names)
+        log_debug(f'Converted Investidor 10 data: {converted_data}')
+        return converted_data
     except Exception as error:
-        #print(f'Error on get Investidor 10 data: {traceback.format_exc()}')
+        log_debug(f'Error on get Investidor 10 data: {traceback.format_exc()}')
         return None
+
+def filter_remaining_infos(data, info_names, default_info_names=None):
+    if not data:
+        return info_names
+
+    missing_info = [ info for info in info_names if info in data and data[info] is None ]
+
+    return missing_info if missing_info else default_info_names
+
+def combine_data(first_dict, second_dict, info_names):
+    if first_dict and second_dict:
+        combined_dict = {**first_dict, **second_dict}
+        log_debug(f'Data from combined Frist and Second Dictionaries: {combined_dict}')
+    elif first_dict:
+        combined_dict = first_dict
+        log_debug(f'Data from First Dictionary only: {combined_dict}')
+    elif second_dict:
+        combined_dict = second_dict
+        log_debug(f'Data from Second Dictionary only: {combined_dict}')
+    else:
+        combined_dict = {}
+        log_debug('No combined data')
+
+    missing_combined_infos = filter_remaining_infos(combined_dict, info_names)
+    log_debug(f'Missing info from Combined data: {missing_combined_infos}')
+    return combined_dict, missing_combined_infos
 
 def get_data_from_all_sources(ticker, info_names):
     data_fundamentus = get_data_from_fundamentus(ticker, info_names)
-    #print(f'Data from Fundamentus: {data_fundamentus}')
+    log_info(f'Data from Fundamentus: {data_fundamentus}')
 
-    blank_fundamentus_info_names = [ info for info in info_names if not data_fundamentus.get(info, False) ]
-    #print(f'Info names: {blank_fundamentus_info_names}')
+    missing_fundamentus_infos = filter_remaining_infos(data_fundamentus, info_names)
+    log_debug(f'Missing info from Fundamentus: {missing_fundamentus_infos}')
 
-    if data_fundamentus and not blank_fundamentus_info_names:
+    if data_fundamentus and not missing_fundamentus_infos:
         return data_fundamentus
 
-    data_investidor10 = get_data_from_investidor10(ticker, blank_fundamentus_info_names if blank_fundamentus_info_names else info_names)
-    #print(f'Data from Investidor 10: {data_investidor10}')
+    data_infomoney = get_data_from_infomoney(ticker, missing_fundamentus_infos or info_names)
+    log_info(f'Data from InfoMoney: {data_infomoney}')
 
-    if not data_investidor10:
-        return data_fundamentus
+    combined_data, missing_combined_infos = combine_data(data_fundamentus, data_infomoney, info_names)
+    log_debug(f'Missing info from Fundamentus or InfoMoney: {missing_combined_infos}')
 
-    return { **data_fundamentus, **data_investidor10 }
+    if combined_data and not missing_combined_infos:
+        return combined_data
 
-def request_shares(ticker, source, info_names):
-    if source == VALID_SOURCES['FUNDAMENTUS_SOURCE']:
-        return get_data_from_fundamentus(ticker, info_names)
-    elif source == VALID_SOURCES['INVESTIDOR10_SOURCE']:
-        return get_data_from_investidor10(ticker, info_names)
+    data_investidor_10 = get_data_from_investidor10(ticker, missing_combined_infos or info_names)
+    log_info(f'Data from Investidor 10: {data_investidor_10}')
 
-    return get_data_from_all_sources(ticker, info_names)
+    if not data_investidor_10:
+        return combined_data
+
+    return { **combined_data, **data_investidor_10 }
+
+def get_data_from_sources(ticker, source, info_names):
+    SOURCES = {
+        VALID_SOURCES['FUNDAMENTUS_SOURCE']: get_data_from_fundamentus,
+        VALID_SOURCES['INVESTIDOR10_SOURCE']: get_data_from_investidor10,
+        VALID_SOURCES['INFOMONEY_SOURCE']: get_data_from_infomoney
+    }
+
+    fetch_function = SOURCES.get(source, get_data_from_all_sources)
+    return fetch_function(ticker, info_names)
+
+def get_data_from_cache(ticker, info_names, can_use_cache):
+    if not can_use_cache:
+        return None
+
+    cached_data = read_cache(ticker)
+    if not cached_data:
+        return None
+
+    filtered_data = { key: cached_data[key] for key in info_names if key in cached_data }
+    log_info(f'Data from Cache: {filtered_data}')
+
+    return filtered_data
+
+def get_data(ticker, source, info_names, can_use_cache):
+    cached_data = get_data_from_cache(ticker, info_names, can_use_cache)
+
+    SHOULD_UPDATE_CACHE = True
+
+    if not can_use_cache:
+        return not SHOULD_UPDATE_CACHE, get_data_from_sources(ticker, source, info_names)
+
+    missing_cache_info_names = filter_remaining_infos(cached_data, info_names)
+
+    if not missing_cache_info_names:
+        return not SHOULD_UPDATE_CACHE, cached_data
+
+    source_data = get_data_from_sources(ticker, source, missing_cache_info_names)
+
+    if cached_data and source_data:
+        return SHOULD_UPDATE_CACHE, { **cached_data, **source_data }
+    elif cached_data and not source_data:
+        return not SHOULD_UPDATE_CACHE, cached_data
+    elif not cached_data and source_data:
+        return SHOULD_UPDATE_CACHE, source_data
+
+    return not SHOULD_UPDATE_CACHE, None
+
+def get_parameter_info(params, name, default=None):
+    return params.get(name, default).replace(' ', '').lower()
+
+def get_cache_parameter_info(params, name, default='0'):
+    return get_parameter_info(params, name, default) in { '1', 's', 'sim', 't', 'true', 'y', 'yes' }
 
 @app.route('/acao/<ticker>', methods=['GET'])
 def get_acao_data(ticker):
-    should_delete_cache = request.args.get('should_delete_cache', '0').replace(' ', '').lower() in TRUE_BOOL_VALUES
-    should_clear_cache = request.args.get('should_clear_cache', '0').replace(' ', '').lower() in TRUE_BOOL_VALUES
-    should_use_cache = request.args.get('should_use_cache', '1').replace(' ', '').lower() in TRUE_BOOL_VALUES
+    should_delete_all_cache = get_cache_parameter_info(request.args, 'should_delete_all_cache')
+    should_clear_cached_data = get_cache_parameter_info(request.args, 'should_clear_cached_data')
+    should_use_cache = get_cache_parameter_info(request.args, 'should_use_cache', '1')
 
-    source = request.args.get('source', VALID_SOURCES['ALL_SOURCE']).replace(' ', '').lower()
-    source = source if source in VALID_SOURCES.values() else VALID_SOURCES['ALL_SOURCE']
+    ticker = ticker.upper()
 
-    info_names = request.args.get('info_names', '').replace(' ', '').lower().split(',')
-    info_names = [ info for info in info_names if info in VALID_INFOS ]
-    info_names = info_names if len(info_names) else VALID_INFOS
+    raw_source = get_parameter_info(request.args, 'source', VALID_SOURCES['ALL_SOURCE'])
+    source = raw_source if raw_source in VALID_SOURCES.values() else VALID_SOURCES['ALL_SOURCE']
 
-    #print(f'Delete cache? {should_delete_cache}, Clear cache? {should_clear_cache}, Use cache? {should_use_cache}')
-    #print(f'Ticker: {ticker}, Source: {source}, Info names: {info_names}')
+    raw_info_names = [ info for info in get_parameter_info(request.args, 'info_names', '').split(',') if info in VALID_INFOS ]
+    info_names = raw_info_names if len(raw_info_names) else VALID_INFOS
 
-    if should_delete_cache:
-        delete_cache()
+    log_debug(f'Should Delete cache? {should_delete_all_cache} - Should Clear cache? {should_clear_cached_data} - Should Use cache? {should_use_cache}')
+    log_debug(f'Ticker: {ticker} - Source: {source} - Info names: {info_names}')
 
-    should_use_and_not_delete_cache = should_use_cache and not should_delete_cache
+    can_use_cache = preprocess_cache(ticker, should_delete_all_cache, should_clear_cached_data, should_use_cache)
 
-    if should_use_and_not_delete_cache:
-        id = f'{ticker}{source}{",".join(sorted(info_names))}'.encode('utf-8')
-        hash_id = sha512(id).hexdigest()
-        #print(f'Cache Hash ID: {hash_id}, From values: {id}')
+    should_update_cache, data = get_data(ticker, source, info_names, can_use_cache)
 
-        cached_data, cache_date = read_cache(hash_id, should_clear_cache)
+    log_debug(f'Final Data: {data}')
 
-        if cached_data:
-            #print(f'Data from Cache: {cached_data}')
-            return jsonify({'data': cached_data, 'source': 'cache', 'date': cache_date.strftime("%d/%m/%Y, %H:%M")}), 200
+    if not data:
+        return jsonify({ 'error': 'No data found' }), 404
 
-    data = request_shares(ticker, source, info_names)
-    #print(f'Data from Source: {data}')
+    if can_use_cache and should_update_cache:
+        upsert_cache(ticker, data)
 
-    if should_use_and_not_delete_cache and not should_clear_cache:
-        write_to_cache(hash_id, data)
-
-    return jsonify({'data': data, 'source': 'fresh', 'date': datetime.now().strftime("%d/%m/%Y, %H:%M")}), 200
+    return jsonify(data), 200
 
 if __name__ == '__main__':
-    is_debug = os.getenv('IS_DEBUG', False)
-    app.run(debug=is_debug)
+    log_debug('Starting acaoCrawler API')
+    app.run(debug=LOG_LEVEL == 'DEBUG')
