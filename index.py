@@ -31,7 +31,6 @@ VALID_SOURCES = {
 VALID_INFOS = [
     'assets_value',
     'avg_annual_dividends',
-    'avg_payout',
     'avg_price',
     'cagr_profit',
     'cagr_revenue',
@@ -260,7 +259,6 @@ def convert_fundamentus_data(data, info_names):
     ALL_INFO = {
         'assets_value': lambda: text_to_number(get_substring(data, 'Ativo</span>', '</span>', patterns_to_remove)),
         'avg_annual_dividends': lambda: None,
-        'avg_payout': lambda: None,
         'avg_price': lambda: None,
         'cagr_profit': lambda: None,
         'cagr_revenue': lambda: None,
@@ -327,7 +325,6 @@ def convert_infomoney_data(data, info_names):
     ALL_INFO = {
         'assets_value': lambda: None,
         'avg_annual_dividends': lambda: None,
-        'avg_payout': lambda: None,
         'avg_price': lambda: avg_price,
         'cagr_profit': lambda: None,
         'cagr_revenue': lambda: None,
@@ -419,7 +416,6 @@ def convert_investidor10_ticker_data(page, dividends, info_names):
     ALL_INFO = {
         'assets_value': lambda: get_detailed_value(get_substring(page, 'Ativos</span>', '</span>')),
         'avg_annual_dividends': lambda: (sum(dividend['price'] for dividend in dividends if dividend['created_at'] != current_year) / (len(dividends) -1 if dividends_has_current_year else len(dividends))) if dividends else None,
-        'avg_payout': lambda: text_to_number(get_substring(page, 'Média da empresa</p>', '</span>', patterns_to_remove)),
         'avg_price': lambda: None,
         'cagr_profit': lambda: text_to_number(get_substring(page, 'período equivalente de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
         'cagr_revenue': lambda: text_to_number(get_substring(page, 'período de cinco anos atrás.&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
