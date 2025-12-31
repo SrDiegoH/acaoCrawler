@@ -40,6 +40,7 @@ VALID_INFOS = [
     'equity_value',
     'gross_margin',
     'latests_dividends',
+    'latest_net_profit',
     'link',
     'liquidity',
     'market_value',
@@ -264,6 +265,7 @@ def convert_fundamentus_data(data, historical_prices, info_names):
         'equity_value': lambda: text_to_number(get_substring(data, 'Patrim. Líq</span>', '</span>', patterns_to_remove)),
         'gross_margin': lambda: text_to_number(get_substring(data, 'Marg. Bruta</span>', '</span>', patterns_to_remove)),
         'latests_dividends': lambda: None,
+        'latest_net_profit': lambda: None,
         'link': lambda: 'https://www.rad.cvm.gov.br/ENET/frmConsultaExternaCVM.aspx',
         'liquidity': lambda: text_to_number(get_substring(data, 'Vol $ méd (2m)</span>', '</span>', patterns_to_remove)),
         'market_value': lambda: text_to_number(get_substring(data, 'Valor de mercado</span>', '</span>', patterns_to_remove)),
@@ -316,12 +318,7 @@ def get_data_from_fundamentus(ticker, info_names):
         log_debug(f'Error on get Fundamentus data: {traceback.format_exc()}')
         return None
 
-def convert_investidor10_ticker_data(page, dividends, info_names):
-    current_year = datetime.now().year
-    dividends_has_current_year = any(dividend['created_at'] == current_year for dividend in dividends)
-
-    get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>')) if text else None
-
+def convert_investidor10_ticker_data(page, dividends, historical_net_profit, info_names):
     patterns_to_remove = [
         '<div>',
         '</div>',
@@ -333,6 +330,18 @@ def convert_investidor10_ticker_data(page, dividends, info_names):
         '<span id="company-average-value">',
         'style="margin-top: 10px; width: 100%; padding-right: 0px">'
     ]
+
+    current_year = datetime.now().year
+    dividends_has_current_year = any(dividend['created_at'] == current_year for dividend in dividends)
+
+    get_detailed_value = lambda text: text_to_number(get_substring(text, 'detail-value">', '</div>')) if text else None
+
+    def filter_historical_net_profit():
+        years = sorted((int(year) for year in historical_net_profit.keys() if year.isdigit()))
+        latest_years = years[-5:]
+
+        latest_net_profit = { year: historical_net_profit[str(year)]["net_profit"] for year in latest_years }
+        return latest_net_profit
 
     ALL_INFO = {
         'assets_value': lambda: get_detailed_value(get_substring(page, 'Ativos</span>', '</span>')),
@@ -347,6 +356,7 @@ def convert_investidor10_ticker_data(page, dividends, info_names):
         'equity_value': lambda: get_detailed_value(get_substring(page, 'Patrimônio Líquido</span>', '</span>')),
         'gross_margin': lambda: text_to_number(get_substring(page, 'lucro bruto / receita líquida&lt;/b&gt;&lt;/p&gt;"></i></span>', '</span>', patterns_to_remove)),
         'latests_dividends': lambda: next((dividend['price'] for dividend in dividends if dividend['created_at'] == (current_year if dividends_has_current_year else current_year -1)), None) if dividends else None,
+        'latest_net_profit': filter_historical_net_profit,
         'link': lambda: None,
         'liquidity': lambda: get_detailed_value(get_substring(page, 'Liquidez Média Diária</span>', '</span>')),
         'market_value': lambda: get_detailed_value(get_substring(page, 'Valor de mercado</span>', '</span>')),
@@ -390,7 +400,13 @@ def get_data_from_investidor10(ticker, info_names):
           response = request_get(f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano', headers)
           dividends = response.json()
 
-        converted_data = convert_investidor10_ticker_data(html_page, dividends, info_names)
+        historical_net_profit = {}
+        if 'latest_net_profit' in info_names:
+          url = f'https://investidor10.com.br/api/cotacao-lucro/{ticker}/adjusted/'
+          response = request_get(url, headers)
+          historical_net_profit = response.json()
+
+        converted_data = convert_investidor10_ticker_data(html_page, dividends, historical_net_profit, info_names)
         log_debug(f'Converted Investidor 10 data: {converted_data}')
         return converted_data
     except Exception as error:
