@@ -436,7 +436,7 @@ def get_data_from_all_sources(ticker, info_names):
     if data_fundamentus and not missing_fundamentus_infos:
         return data_fundamentus
 
-    data_investidor_10 = get_data_from_investidor10(ticker, missing_combined_infos or info_names)
+    data_investidor_10 = get_data_from_investidor10(ticker, missing_fundamentus_infos or info_names)
     log_info(f'Data from Investidor 10: {data_investidor_10}')
 
     combined_data, _ = combine_data(data_fundamentus, data_investidor_10, info_names)
