@@ -303,12 +303,10 @@ def get_data_from_fundamentus(ticker, info_names):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 OPR/113.0.0.0'
         }
 
-        url = f'https://fundamentus.com.br/detalhes.php?papel={ticker}'
-        response = request_get(url, headers)
+        response = request_get(f'https://fundamentus.com.br/detalhes.php?papel={ticker}', headers)
         html_page = response.text
 
-        url = f'https://www.fundamentus.com.br/amline/cot_hist.php?papel={ticker}'
-        response = request_get(url, headers)
+        response = request_get(f'https://www.fundamentus.com.br/amline/cot_hist.php?papel={ticker}', headers)
         historical_prices = response.json()
 
         log_debug(f'Converted Fundamentus data: {convert_fundamentus_data(html_page, historical_prices, info_names)}')
@@ -383,14 +381,12 @@ def get_data_from_investidor10(ticker, info_names):
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/114.0.0.0',
         }
 
-        url = f'https://investidor10.com.br/acoes/{ticker}'
-        response = request_get(url, headers)
+        response = request_get(f'https://investidor10.com.br/acoes/{ticker}', headers)
         html_page = response.text[15898:]
 
         dividends = {}
         if 'latests_dividends' in info_names or 'avg_annual_dividends' in info_names:
-          url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
-          response = request_get(url, headers)
+          response = request_get(f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano', headers)
           dividends = response.json()
 
         converted_data = convert_investidor10_ticker_data(html_page, dividends, info_names)
