@@ -24,7 +24,6 @@ SEPARATOR = '#@#'
 VALID_SOURCES = {
     'ALL_SOURCE': 'all',
     'FUNDAMENTUS_SOURCE': 'fundamentus',
-    'INFOMONEY_SOURCE': 'infomoney',
     'INVESTIDOR10_SOURCE': 'investidor10'
 }
 
@@ -233,15 +232,7 @@ def request_get(url, headers=None):
 
     return response
 
-def request_post(url, headers=None, data=None):
-    response = requests.post(url, headers=headers, data=data)
-    response.raise_for_status()
-
-    log_debug(f'Response from {url} : {response}')
-
-    return response
-
-def convert_fundamentus_data(data, info_names):
+def convert_fundamentus_data(data, historical_prices, info_names):
     patterns_to_remove = [
       '<span class="txt">',
       '<span class="oscil">',
@@ -256,10 +247,14 @@ def convert_fundamentus_data(data, info_names):
       '<a href="resultado.php?segmento='
     ]
 
+    prices = [ price[1] for price in historical_prices[-200:] ]
+    avg_price = sum(prices) / len(prices)
+    last_price = historical_prices[-1][1]
+
     ALL_INFO = {
         'assets_value': lambda: text_to_number(get_substring(data, 'Ativo</span>', '</span>', patterns_to_remove)),
         'avg_annual_dividends': lambda: None,
-        'avg_price': lambda: None,
+        'avg_price': lambda: avg_price,
         'cagr_profit': lambda: None,
         'cagr_revenue': lambda: None,
         'debit': lambda: text_to_number(get_substring(data, 'Dív. Líquida</span>', '</span>', patterns_to_remove)),
@@ -273,8 +268,10 @@ def convert_fundamentus_data(data, info_names):
         'liquidity': lambda: text_to_number(get_substring(data, 'Vol $ méd (2m)</span>', '</span>', patterns_to_remove)),
         'market_value': lambda: text_to_number(get_substring(data, 'Valor de mercado</span>', '</span>', patterns_to_remove)),
         'max_52_weeks': lambda: text_to_number(get_substring(data, 'Max 52 sem</span>', '</span>', patterns_to_remove)),
-        'mayer_multiple': lambda: None,
+        #'max_52_weeks': lambda: max(prices), 
+        'mayer_multiple': lambda: last_price / avg_price,
         'min_52_weeks': lambda: text_to_number(get_substring(data, 'Min 52 sem</span>', '</span>', patterns_to_remove)),
+        #'min_52_weeks': lambda: min(prices),
         'name': lambda: get_substring(data, 'Empresa</span>', '</span>', patterns_to_remove + [ get_substring(data, 'Tipo</span>', '</span>', patterns_to_remove) ]),
         'net_margin': lambda: text_to_number(get_substring(data, 'Marg. Líquida</span>', '</span>', patterns_to_remove)),
         'net_profit': lambda: text_to_number(get_substring(data, 'Lucro Líquido</span>', '</span>', patterns_to_remove)),
@@ -282,6 +279,7 @@ def convert_fundamentus_data(data, info_names):
         'payout': lambda: None,
         'pl': lambda: text_to_number(get_substring(data, 'P/L</span>', '</span>', patterns_to_remove)),
         'price': lambda: text_to_number(get_substring(data, 'Cotação</span>', '</span>', patterns_to_remove)),
+        #'price': lambda: last_price,
         'pvp': lambda: text_to_number(get_substring(data, 'P/VP</span>', '</span>', patterns_to_remove)),
         'roe': lambda: text_to_number(get_substring(data, 'ROE</span>', '</span>', patterns_to_remove)),
         'roic': lambda: text_to_number(get_substring(data, 'ROIC</span>', '</span>', patterns_to_remove)),
@@ -297,8 +295,6 @@ def convert_fundamentus_data(data, info_names):
 
 def get_data_from_fundamentus(ticker, info_names):
     try:
-        url = f'https://fundamentus.com.br/detalhes.php?papel={ticker}'
-
         headers = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
@@ -307,92 +303,18 @@ def get_data_from_fundamentus(ticker, info_names):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 OPR/113.0.0.0'
         }
 
+        url = f'https://fundamentus.com.br/detalhes.php?papel={ticker}'
         response = request_get(url, headers)
         html_page = response.text
 
-        log_debug(f'Converted Fundamentus data: {convert_fundamentus_data(html_page, info_names)}')
-        return convert_fundamentus_data(html_page, info_names)
+        url = f'https://www.fundamentus.com.br/amline/cot_hist.php?papel={ticker}'
+        response = request_get(url, headers)
+        historical_prices = response.json()
+
+        log_debug(f'Converted Fundamentus data: {convert_fundamentus_data(html_page, historical_prices, info_names)}')
+        return convert_fundamentus_data(html_page, historical_prices, info_names)
     except Exception as error:
         log_debug(f'Error on get Fundamentus data: {traceback.format_exc()}')
-        return None
-
-
-def convert_infomoney_data(data, info_names):
-    prices = [ text_to_number(price[2]) for price in data ]
-    price = text_to_number(prices[0])
-    avg_price = sum(prices) / len(prices)
-
-    ALL_INFO = {
-        'assets_value': lambda: None,
-        'avg_annual_dividends': lambda: None,
-        'avg_price': lambda: avg_price,
-        'cagr_profit': lambda: None,
-        'cagr_revenue': lambda: None,
-        'debit': lambda: None,
-        'dy': lambda: None,
-        'ebit':  lambda: None,
-        'enterprise_value': lambda: None,
-        'equity_value': lambda: None,
-        'gross_margin': lambda: None,
-        'latests_dividends': lambda: None,
-        'link': lambda: None,
-        'liquidity': lambda: None,
-        'market_value': lambda: None,
-        'max_52_weeks': lambda: max(prices),
-        'mayer_multiple': lambda: price / avg_price,
-        'min_52_weeks': lambda: min(prices),
-        'name': lambda: None,
-        'net_margin': lambda: None,
-        'net_profit': lambda: None,
-        'net_revenue': lambda: None,
-        'payout': lambda: None,
-        'pl': lambda: None,
-        'price': lambda: None,
-        'pvp': lambda: None,
-        'roe': lambda: None,
-        'roic': lambda: None,
-        'sector':  lambda: None,
-        'total_issued_shares': lambda: None,
-        'variation_12m': lambda: None,
-        'variation_30d': lambda: None
-    }
-
-    final_data = { info: ALL_INFO[info]() for info in info_names }
-
-    return final_data
-
-def get_data_from_infomoney(ticker, info_names):
-    try:
-        headers = {
-            'accept': 'application/json, text/javascript, */*; q=0.01',
-            'accept-language': 'pt-BR,pt;q=0.9,en;q=0.8,ko;q=0.7',
-            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'dnt': '1',
-            'origin': 'https://www.infomoney.com.br',
-            'priority': 'u=1, i',
-            'referer': 'https://www.infomoney.com.br/cotacoes/b3/acao/banco-do-brasil-bbas3/historico/',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 OPR/120.0.0.0',
-            'x-requested-with': 'XMLHttpRequest'
-        }
-
-        base_url = 'https://www.infomoney.com.br/wp-json/infomoney/v1/quotes/history'
-
-        today = datetime.now()
-        today_day_month = f'{today.day if today.day >= 10 else f"0{today.day}"}%2F{today.month if today.month >= 10 else f"0{today.month}"}'
-
-        past_200_days = today - timedelta(days=365)
-        past_200_days_day_month = f'{past_200_days.day if past_200_days.day >= 10 else f"0{past_200_days.day}"}%2F{past_200_days.month if past_200_days.month >= 10 else f"0{past_200_days.month}"}'
-
-        form_data = f'page=0&numberItems=200&initialDate={past_200_days_day_month}%2F{past_200_days.year}&finalDate={today_day_month}%2F{today.year}&symbol={ticker}'
-
-        response = request_post(base_url, headers=headers, data=form_data)
-        prices = response.json()
-
-        converted_data = convert_infomoney_data(prices, info_names)
-        log_debug(f'Converted fresh InfoMoney data: {converted_data}')
-        return converted_data
-    except:
-        log_error(f'Error fetching InfoMoney data for "{ticker}": {traceback.format_exc()}')
         return None
 
 def convert_investidor10_ticker_data(page, dividends, info_names):
@@ -514,28 +436,17 @@ def get_data_from_all_sources(ticker, info_names):
     if data_fundamentus and not missing_fundamentus_infos:
         return data_fundamentus
 
-    data_infomoney = get_data_from_infomoney(ticker, missing_fundamentus_infos or info_names)
-    log_info(f'Data from InfoMoney: {data_infomoney}')
-
-    combined_data, missing_combined_infos = combine_data(data_fundamentus, data_infomoney, info_names)
-    log_debug(f'Missing info from Fundamentus or InfoMoney: {missing_combined_infos}')
-
-    if combined_data and not missing_combined_infos:
-        return combined_data
-
     data_investidor_10 = get_data_from_investidor10(ticker, missing_combined_infos or info_names)
     log_info(f'Data from Investidor 10: {data_investidor_10}')
 
-    if not data_investidor_10:
-        return combined_data
+    combined_data, _ = combine_data(data_fundamentus, data_investidor_10, info_names)
 
-    return { **combined_data, **data_investidor_10 }
+    return combined_data
 
 def get_data_from_sources(ticker, source, info_names):
     SOURCES = {
         VALID_SOURCES['FUNDAMENTUS_SOURCE']: get_data_from_fundamentus,
-        VALID_SOURCES['INVESTIDOR10_SOURCE']: get_data_from_investidor10,
-        VALID_SOURCES['INFOMONEY_SOURCE']: get_data_from_infomoney
+        VALID_SOURCES['INVESTIDOR10_SOURCE']: get_data_from_investidor10
     }
 
     fetch_function = SOURCES.get(source, get_data_from_all_sources)
