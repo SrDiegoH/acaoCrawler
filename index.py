@@ -309,8 +309,9 @@ def get_data_from_fundamentus(ticker, info_names):
         response = request_get(f'https://www.fundamentus.com.br/amline/cot_hist.php?papel={ticker}', headers)
         historical_prices = response.json()
 
-        log_debug(f'Converted Fundamentus data: {convert_fundamentus_data(html_page, historical_prices, info_names)}')
-        return convert_fundamentus_data(html_page, historical_prices, info_names)
+        converted_data = convert_fundamentus_data(html_page, historical_prices, info_names)
+        log_debug(f'Converted Fundamentus data: {converted_data}')
+        return converted_data
     except Exception as error:
         log_debug(f'Error on get Fundamentus data: {traceback.format_exc()}')
         return None
