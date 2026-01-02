@@ -23,6 +23,7 @@ SEPARATOR = '#@#'
 
 VALID_SOURCES = {
     'ALL_SOURCE': 'all',
+    'CVM_SOURCE': 'cvm',
     'FUNDAMENTUS_SOURCE': 'fundamentus',
     'INVESTIDOR10_SOURCE': 'investidor10'
 }
@@ -62,6 +63,8 @@ VALID_INFOS = [
     'variation_12m',
     'variation_30d'
 ]
+
+investidor_10_preloaded_data = (None, None)
 
 app = Flask(__name__)
 app.json.sort_keys = False
@@ -233,6 +236,109 @@ def request_get(url, headers=None):
 
     return response
 
+def convert_cvm_data(data, info_names):
+    cvm_code = get_substring(data, 'dlCiasCdCVM$_ctl1$Linkbutton5&#39;,&#39;&#39;)">', '</a>')
+
+    ALL_INFO = {
+        'assets_value': lambda: None,
+        'avg_annual_dividends': lambda: None,
+        'avg_price': lambda: None,
+        'cagr_profit': lambda: None,
+        'cagr_revenue': lambda: None,
+        'debit': lambda: None,
+        'dy': lambda: None,
+        'ebit': lambda: None,
+        'enterprise_value': lambda: None,
+        'equity_value': lambda: None,
+        'gross_margin': lambda: None,
+        'latests_dividends': lambda: None,
+        'latest_net_profit': lambda: None,
+        'link': lambda: f'https://www.rad.cvm.gov.br/ENET/frmConsultaExternaCVM.aspx?tipoconsulta=CVM&codigoCVM={cvm_code}',
+        'liquidity': lambda: None,
+        'market_value': lambda: None,
+        'max_52_weeks': lambda: None,
+        'mayer_multiple': lambda: None,
+        'min_52_weeks': lambda: None,
+        'name': lambda: None,
+        'net_margin': lambda: None,
+        'net_profit': lambda: None,
+        'net_revenue': lambda: None,
+        'payout': lambda: None,
+        'pl': lambda: None,
+        'price': lambda: None,
+        'pvp': lambda: None,
+        'roe': lambda: None,
+        'roic': lambda: None,
+        'sector': lambda: None,
+        'total_issued_shares': lambda: None,
+        'variation_12m': lambda: None,
+        'variation_30d': lambda: None
+    }
+
+    final_data = { info: ALL_INFO[info]() for info in info_names }
+
+    return final_data
+
+def get_data_from_cvmweb(cnpj):
+    try:
+        headers = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8,ko;q=0.7,es;q=0.6,fr;q=0.5',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 OPR/125.0.0.0'
+        }
+
+        response = request_get(f'https://cvmweb.cvm.gov.br/SWB/Sistemas/SCW/CPublica/CiaAb/ResultBuscaParticCiaAb.aspx?CNPJNome={cnpj}&TipoConsult=C', headers)
+        html_body = response.text
+
+        return html_body
+    except:
+        log_error(f'Error fetching CVM Code on CVM Web for "{cnpj}": {traceback.format_exc()}')
+        return None
+
+def get_cnpj_from_investidor10(ticker):
+    global investidor_10_preloaded_data
+
+    patterns_to_remove = [ '</td>', '<td class=\'value\'>' ]
+
+    try:
+        headers = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8,ko;q=0.7,es;q=0.6,fr;q=0.5',
+            'Referer': 'https://investidor10.com.br/acoes/BBAS3',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 OPR/125.0.0.0'
+        }
+
+        response = request_get(f'https://investidor10.com.br/acoes/{ticker}', headers)
+        html_cropped_body = response.text[15898:]
+
+        cnpj = get_substring(html_cropped_body, 'CNPJ:', '</tr>', patterns_to_remove)
+
+        if cnpj:
+          investidor_10_preloaded_data = (ticker, html_cropped_body)
+
+        return cnpj
+    except:
+        investidor_10_preloaded_data = (None, None)
+        log_error(f'Error fetching CNPJ on Investidor 10 for "{ticker}": {traceback.format_exc()}')
+        return None
+
+def get_data_from_cvm(ticker, info_names):
+    try:
+        cnpj = get_cnpj_from_investidor10(ticker)
+
+        if not cnpj:
+            log_error(f'No CNPJ found for "{ticker}"')
+            return None
+
+        data = get_data_from_cvmweb(cnpj)
+
+        converted_data = convert_cvm_data(data, info_names)
+        log_debug(f'Converted CVM data: {converted_data}')
+        return converted_data
+    except:
+        log_error(f'Error fetching data on CVM for "{ticker}": {traceback.format_exc()}')
+        return None
+
 def convert_fundamentus_data(data, historical_prices, info_names):
     patterns_to_remove = [
       '<span class="txt">',
@@ -252,6 +358,11 @@ def convert_fundamentus_data(data, historical_prices, info_names):
     avg_price = sum(prices) / len(prices)
     last_price = historical_prices[-1][1]
 
+    def get_revenue():
+        if 'Receita Líquida' in data:
+            return text_to_number(get_substring(data, 'Receita Líquida</span>', '</span>', patterns_to_remove))
+        return text_to_number(get_substring(data, 'Rec Serviços</span>', '</span>', patterns_to_remove)) + text_to_number(get_substring(data, 'Result Int Financ</span>', '</span>', patterns_to_remove))
+
     ALL_INFO = {
         'assets_value': lambda: text_to_number(get_substring(data, 'Ativo</span>', '</span>', patterns_to_remove)),
         'avg_annual_dividends': lambda: None,
@@ -270,14 +381,14 @@ def convert_fundamentus_data(data, historical_prices, info_names):
         'liquidity': lambda: text_to_number(get_substring(data, 'Vol $ méd (2m)</span>', '</span>', patterns_to_remove)),
         'market_value': lambda: text_to_number(get_substring(data, 'Valor de mercado</span>', '</span>', patterns_to_remove)),
         'max_52_weeks': lambda: text_to_number(get_substring(data, 'Max 52 sem</span>', '</span>', patterns_to_remove)),
-        #'max_52_weeks': lambda: max(prices), 
+        #'max_52_weeks': lambda: max(prices),
         'mayer_multiple': lambda: last_price / avg_price,
         'min_52_weeks': lambda: text_to_number(get_substring(data, 'Min 52 sem</span>', '</span>', patterns_to_remove)),
         #'min_52_weeks': lambda: min(prices),
         'name': lambda: get_substring(data, 'Empresa</span>', '</span>', patterns_to_remove + [ get_substring(data, 'Tipo</span>', '</span>', patterns_to_remove) ]),
         'net_margin': lambda: text_to_number(get_substring(data, 'Marg. Líquida</span>', '</span>', patterns_to_remove)),
         'net_profit': lambda: text_to_number(get_substring(data, 'Lucro Líquido</span>', '</span>', patterns_to_remove)),
-        'net_revenue': lambda: text_to_number(get_substring(data, 'Receita Líquida</span>', '</span>', patterns_to_remove)),
+        'net_revenue': get_revenue,
         'payout': lambda: None,
         'pl': lambda: text_to_number(get_substring(data, 'P/L</span>', '</span>', patterns_to_remove)),
         'price': lambda: text_to_number(get_substring(data, 'Cotação</span>', '</span>', patterns_to_remove)),
@@ -314,11 +425,11 @@ def get_data_from_fundamentus(ticker, info_names):
         converted_data = convert_fundamentus_data(html_page, historical_prices, info_names)
         log_debug(f'Converted Fundamentus data: {converted_data}')
         return converted_data
-    except Exception as error:
-        log_debug(f'Error on get Fundamentus data: {traceback.format_exc()}')
+    except:
+        log_debug(f'Error fetching data on Fundamentus for "{ticker}": {traceback.format_exc()}')
         return None
 
-def convert_investidor10_ticker_data(page, dividends, historical_net_profit, info_names):
+def convert_investidor10_data(page, dividends, historical_net_profit, info_names):
     patterns_to_remove = [
         '<div>',
         '</div>',
@@ -338,9 +449,11 @@ def convert_investidor10_ticker_data(page, dividends, historical_net_profit, inf
 
     def filter_historical_net_profit():
         years = sorted((int(year) for year in historical_net_profit.keys() if year.isdigit()))
+
         latest_years = years[-5:]
 
         latest_net_profit = { year: historical_net_profit[str(year)]["net_profit"] for year in latest_years }
+
         return latest_net_profit
 
     ALL_INFO = {
@@ -384,33 +497,48 @@ def convert_investidor10_ticker_data(page, dividends, historical_net_profit, inf
     return final_data
 
 def get_data_from_investidor10(ticker, info_names):
-    try:
-        headers = {
-            'accept': '*/*',
-            'accept-language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-            'referer': 'https://investidor10.com.br/acoes/cmig4/',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/114.0.0.0',
-        }
+    global investidor_10_preloaded_data
 
-        response = request_get(f'https://investidor10.com.br/acoes/{ticker}', headers)
+    headers = {
+        'Accept': '*/*',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://investidor10.com.br/acoes/cmig4/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/114.0.0.0',
+    }
+
+    def get_investidor10_html_page():
+        if investidor_10_preloaded_data[1] and ticker == investidor_10_preloaded_data[0]:
+            log_debug(f'Using preloaded Investidor 10 data')
+            return investidor_10_preloaded_data[1]
+
+        url = f'https://investidor10.com.br/acoes/{ticker}'
+        response = request_get(url, headers)
         html_page = response.text[15898:]
 
+        log_debug(f'Using fresh Investidor 10 data')
+        return html_page
+
+    def get_investidor10_dividends():
         dividends = {}
+
         if 'latests_dividends' in info_names or 'avg_annual_dividends' in info_names:
-          response = request_get(f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano', headers)
+          url = f'https://investidor10.com.br/api/dividendos/chart/{ticker}/3650/ano'
+          response = request_get(url, headers)
           dividends = response.json()
 
-        historical_net_profit = {}
-        if 'latest_net_profit' in info_names:
-          url = f'https://investidor10.com.br/api/cotacao-lucro/{ticker}/adjusted/'
-          response = request_get(url, headers)
-          historical_net_profit = response.json()
+        return dividends
 
-        converted_data = convert_investidor10_ticker_data(html_page, dividends, historical_net_profit, info_names)
+    def get_investidor10_historical_prices():
+        response = request_get(f'https://investidor10.com.br/api/cotacao-lucro/{ticker}/adjusted', headers)
+        historical_net_profit = response.json()
+        return historical_net_profit
+
+    try:
+        converted_data = convert_investidor10_data(get_investidor10_html_page(), get_investidor10_dividends(), get_investidor10_historical_prices(), info_names)
         log_debug(f'Converted Investidor 10 data: {converted_data}')
         return converted_data
-    except Exception as error:
-        log_debug(f'Error on get Investidor 10 data: {traceback.format_exc()}')
+    except:
+        log_debug(f'Error fetching data on Investidor 10 for "{ticker}": {traceback.format_exc()}')
         return None
 
 def filter_remaining_infos(data, info_names, default_info_names=None):
@@ -440,25 +568,36 @@ def combine_data(first_dict, second_dict, info_names):
     return combined_dict, missing_combined_infos
 
 def get_data_from_all_sources(ticker, info_names):
-    data_fundamentus = get_data_from_fundamentus(ticker, info_names)
+    data_cvm = get_data_from_cvm(ticker, info_names)
+    log_info(f'Data from CVM: {data_cvm}')
+
+    missing_cvm_infos = filter_remaining_infos(data_cvm, info_names)
+    log_debug(f'Missing info from CVM: {missing_cvm_infos}')
+
+    if data_cvm and not missing_cvm_infos:
+        return data_cvm
+
+    data_fundamentus = get_data_from_fundamentus(ticker, missing_cvm_infos or info_names)
     log_info(f'Data from Fundamentus: {data_fundamentus}')
 
-    missing_fundamentus_infos = filter_remaining_infos(data_fundamentus, info_names)
-    log_debug(f'Missing info from Fundamentus: {missing_fundamentus_infos}')
+    combined_data, missing_combined_infos = combine_data(data_cvm, data_fundamentus, info_names)
+    log_debug(f'Missing info from BM & FBovespa or Fundamentus: {missing_combined_infos}')
 
-    if data_fundamentus and not missing_fundamentus_infos:
-        return data_fundamentus
+    if combined_data and not missing_combined_infos:
+        return combined_data
 
-    data_investidor_10 = get_data_from_investidor10(ticker, missing_fundamentus_infos or info_names)
+    data_investidor_10 = get_data_from_investidor10(ticker, missing_combined_infos or info_names)
     log_info(f'Data from Investidor 10: {data_investidor_10}')
 
-    combined_data, _ = combine_data(data_fundamentus, data_investidor_10, info_names)
+    if not data_investidor_10:
+        return combined_data
 
-    return combined_data
+    return { **combined_data, **data_investidor_10 }
 
 def get_data_from_sources(ticker, source, info_names):
     SOURCES = {
         VALID_SOURCES['FUNDAMENTUS_SOURCE']: get_data_from_fundamentus,
+        VALID_SOURCES['CVM_SOURCE']: get_data_from_cvm,
         VALID_SOURCES['INVESTIDOR10_SOURCE']: get_data_from_investidor10
     }
 
